@@ -1,0 +1,161 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: qpremium
+      POSTGRES_USER: qpremium
+      POSTGRES_PASSWORD: qpremium
+    volumes:
+      - qp_pg_data:/var/lib/postgresql/data
+      - qp_backups:/backups
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qpremium -d qpremium"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://qpremium:qpremium@postgres:5432/qpremium
+      REDIS_URL: redis://redis:6379/0
+      BACKUP_DIR: /backups
+      MEDIA_ROOT: /media
+      PUBLIC_BASE_URL: http://backend:8000
+    volumes:
+      - ./backend:/app
+      - qp_backups:/backups
+      - qp_media:/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python manage.py runserver 0.0.0.0:8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://qpremium:qpremium@postgres:5432/qpremium
+      REDIS_URL: redis://redis:6379/0
+      BACKUP_DIR: /backups
+      MEDIA_ROOT: /media
+      PUBLIC_BASE_URL: http://backend:8000
+    volumes:
+      - ./backend:/app
+      - qp_backups:/backups
+      - qp_media:/media
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: celery -A config worker -l info
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://qpremium:qpremium@postgres:5432/qpremium
+      REDIS_URL: redis://redis:6379/0
+      BACKUP_DIR: /backups
+      MEDIA_ROOT: /media
+      PUBLIC_BASE_URL: http://backend:8000
+    volumes:
+      - ./backend:/app
+      - qp_backups:/backups
+      - qp_media:/media
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: celery -A config beat -l info
+    restart: unless-stopped
+
+  miniapp:
+    build:
+      context: ./miniapp
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # HTTPS for Telegram Mini App. Auto .env + menu. No CMD window.
+  tunnel:
+    build:
+      context: ./tunnel
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      QP_ORIGIN_URL: http://host.docker.internal:8080
+      ENV_FILE: /work/.env
+      URL_FILE: /shared/miniapp_url.txt
+    volumes:
+      - ./.env:/work/.env
+      - qp_tunnel_url:/shared
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      miniapp:
+        condition: service_started
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      PUBLIC_BASE_URL: http://backend:8000
+      MINIAPP_URL: ${MINIAPP_URL:-http://localhost:8080/app/}
+      MINIAPP_URL_FILE: /shared/miniapp_url.txt
+    volumes:
+      - ./bot:/app/bot
+      - qp_tunnel_url:/shared:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  qp_pg_data:
+  qp_backups:
+  qp_media:
+  qp_tunnel_url:

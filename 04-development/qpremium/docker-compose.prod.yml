@@ -1,0 +1,59 @@
+# Production overlay. Run:
+# docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Bind only to localhost; put nginx/Caddy with TLS in front.
+# Disable Cloudflare quick-tunnel on real VPS (profile below).
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    # Не публиковать БД на хост (только сеть compose)
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  backend:
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-qpremium}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-qpremium}
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "0"
+      ALLOW_DEV_AUTH: "0"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost}
+      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-0}
+      SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-0}
+    ports:
+      - "127.0.0.1:8000:8000"
+    command:
+      [
+        "gunicorn",
+        "config.wsgi:application",
+        "--bind",
+        "0.0.0.0:8000",
+        "--workers",
+        "3",
+        "--timeout",
+        "60",
+        "--access-logfile",
+        "-",
+      ]
+
+  worker:
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-qpremium}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-qpremium}
+      DEBUG: "0"
+      ALLOW_DEV_AUTH: "0"
+
+  beat:
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-qpremium}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-qpremium}
+      DEBUG: "0"
+      ALLOW_DEV_AUTH: "0"
+
+  miniapp:
+    ports:
+      - "127.0.0.1:8080:80"
+
+  tunnel:
+    profiles: ["dev-tunnel"]

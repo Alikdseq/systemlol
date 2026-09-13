@@ -1,0 +1,66 @@
+{% extends "loyalty/base.html" %}
+{% block title %}Карточка{% endblock %}
+{% block content %}
+<p><a class="inline" href="{% url 'loyalty:office_clients' %}">← Список</a></p>
+<div class="ticket">
+  <p class="tag">Клиент</p>
+  <h1>{{ phone_fmt }}</h1>
+  <p class="balance">{{ client.account.balance_bonus }}<small>бонусов на всю сеть</small></p>
+</div>
+
+<h2>Корректировка</h2>
+<form method="post" class="panel">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="adjust">
+  <label>Дельта (можно минус)</label>
+  <input name="delta" type="number" step="1" required>
+  <label>Магазин</label>
+  <select name="store_id">
+    <option value="">—</option>
+    {% for s in stores %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+  </select>
+  <label>Причина</label>
+  <input name="comment" required maxlength="255">
+  <button class="btn" type="submit">Провести</button>
+</form>
+
+<h2>История</h2>
+<form method="get" class="row">
+  <div>
+    <label>Магазин</label>
+    <select name="store_id">
+      <option value="">все</option>
+      {% for s in stores %}
+        <option value="{{ s.id }}" {% if filter_store_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>С</label>
+    <input type="date" name="date_from" value="{{ filter_date_from }}">
+  </div>
+  <div>
+    <label>По</label>
+    <input type="date" name="date_to" value="{{ filter_date_to }}">
+  </div>
+  <button class="btn" type="submit">Фильтр</button>
+</form>
+<table>
+  <thead><tr><th>Когда</th><th>Тип</th><th>Бонусы</th><th>Чек</th><th>Магазин</th><th>Кто</th><th>Комментарий</th></tr></thead>
+  <tbody>
+  {% for op in operations %}
+    <tr>
+      <td>{{ op.created_at|date:"d.m.Y H:i" }}</td>
+      <td>{{ op.get_type_display }}</td>
+      <td>{{ op.amount_bonus }}</td>
+      <td>{{ op.check_amount_rub|default:"—" }}</td>
+      <td>{{ op.store|default:"—" }}</td>
+      <td>{{ op.staff.username }}</td>
+      <td>{{ op.comment }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7">Нет операций</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

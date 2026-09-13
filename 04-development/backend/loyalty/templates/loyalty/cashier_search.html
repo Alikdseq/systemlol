@@ -1,0 +1,28 @@
+{% extends "loyalty/base.html" %}
+{% block title %}Касса{% endblock %}
+{% block content %}
+<p class="tag">{{ store.name }}</p>
+<h1>Телефон покупателя</h1>
+<p class="hint">Без номера продажа только в 1С. В лояльность гостя не заводим.</p>
+
+<form method="post">
+  {% csrf_token %}
+  <label for="phone">Мобильный</label>
+  <input class="xl" id="phone" name="phone" value="{{ phone|default:'' }}" inputmode="tel" autocomplete="tel" required autofocus>
+  {% if error %}<p class="msg msg-error">{{ error }}</p>{% endif %}
+  <button class="btn" type="submit">Найти</button>
+</form>
+
+{% if not_found %}
+  <div class="ticket" style="margin-top:1.25rem">
+    <p class="tag">Пусто</p>
+    <h2>В базе нет</h2>
+    <p class="hint">Создадим карточку на этот номер. Баланс будет 0, пока не пробьёте чек.</p>
+    <form method="post" action="{% url 'loyalty:cashier_create' %}">
+      {% csrf_token %}
+      <input type="hidden" name="phone" value="{{ phone }}">
+      <button class="btn btn-ghost" type="submit">Создать клиента</button>
+    </form>
+  </div>
+{% endif %}
+{% endblock %}

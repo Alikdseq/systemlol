@@ -1,0 +1,31 @@
+# Secrets
+.env
+.env.local
+.env.prod
+**/.env
+!**/.env.example
+!**/.env.prod.example
+
+# Python / Node
+**/.venv/
+**/__pycache__/
+**/node_modules/
+**/dist/
+*.pyc
+
+# Data / PII artifacts
+backups/
+*.dump
+*.sqlite3
+**/media/**
+
+# Gate raw dumps (могут содержать тестовые ПДн)
+**/_gate_results.json
+05-qa/release-gate-*.json
+
+# Runtime
+**/celerybeat-schedule
+**/celerybeat-schedule.*
+04-development/_audit_smoke_out.json
+
+.DS_Store

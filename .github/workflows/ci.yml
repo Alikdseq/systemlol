@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 04-development/qpremium/backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: qpremium
+          POSTGRES_PASSWORD: qpremium
+          POSTGRES_DB: qpremium_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qpremium -d qpremium_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DEBUG: "0"
+      ALLOW_DEV_AUTH: "0"
+      DJANGO_SECRET_KEY: ci-only-not-for-production-use-min-32-chars-xxxxx
+      DATABASE_URL: postgres://qpremium:qpremium@localhost:5432/qpremium_test
+      TELEGRAM_BOT_TOKEN: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Tests
+        run: python manage.py test loyalty.tests --verbosity=1
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if secrets or dumps tracked
+        run: |
+          set -e
+          git ls-files | grep -E '(^|/)\.env(\.|$)|\.dump$|credentials\.json$' && exit 1 || true
+          echo "no tracked env/dump/credentials"
