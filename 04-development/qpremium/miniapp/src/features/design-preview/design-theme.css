@@ -1,0 +1,298 @@
+/* Q PREMIUM — Private Fashion Club (design preview only) */
+
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+.qp-design {
+  --qp-milk: #f8f6f3;
+  --qp-ink: #171517;
+  --qp-ink-soft: #39252d;
+  --qp-rose: #c58f9d;
+  --qp-rose-soft: #e8dada;
+  --qp-gold: #b49a6a;
+  --qp-gold-deep: #9a7d4a;
+  --qp-card: rgba(255, 252, 249, 0.9);
+  --qp-serif: "Cormorant Garamond", "Times New Roman", Georgia, serif;
+  --qp-sans: "Manrope", system-ui, sans-serif;
+  --qp-radius: 20px;
+  --qp-nav-h: 76px;
+
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  color: var(--qp-ink);
+  font-family: var(--qp-sans);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.45;
+  overflow: hidden;
+  position: relative;
+}
+
+.qp-design *,
+.qp-design *::before,
+.qp-design *::after {
+  box-sizing: border-box;
+}
+
+/* Full-screen saturated peony — photo stays rich, light veil only at bottom for nav */
+.qp-design__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    url("/app/design/bg-rose.png") center 20% / cover no-repeat;
+  filter: saturate(1.15) contrast(1.05);
+}
+
+.qp-design__bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* лёгкая вуаль только чтобы текст сверху читался, цветок остаётся насыщенным */
+  background: linear-gradient(
+    180deg,
+    rgba(248, 246, 243, 0.18) 0%,
+    rgba(248, 246, 243, 0.08) 35%,
+    rgba(248, 246, 243, 0.22) 70%,
+    rgba(248, 246, 243, 0.42) 100%
+  );
+}
+
+.qp-design__bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 70% 15%, rgba(232, 140, 160, 0.22), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(255, 220, 230, 0.15), transparent 55%);
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.qp-design__shell {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.qp-design__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 8px;
+  flex-shrink: 0;
+}
+
+.qp-design__exit {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--qp-ink-soft);
+  font-family: var(--qp-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.qp-design__brand {
+  text-align: right;
+}
+
+.qp-design__brand-mark {
+  display: block;
+  font-family: var(--qp-serif);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--qp-ink);
+  line-height: 1;
+}
+
+.qp-design__brand-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--qp-gold-deep);
+}
+
+.qp-design__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 18px calc(var(--qp-nav-h) + 18px);
+}
+
+.qp-design__nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  height: calc(var(--qp-nav-h) + env(safe-area-inset-bottom, 0px));
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  background: rgba(255, 252, 249, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(57, 37, 45, 0.08);
+}
+
+.qp-design__nav-item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(23, 21, 23, 0.5);
+  font-family: var(--qp-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 6px 2px;
+  transition: color 0.45s ease;
+}
+
+.qp-design__nav-item.is-active {
+  color: var(--qp-rose);
+}
+
+.qp-design__nav-ico {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.qp-design__nav-item.is-active .qp-design__nav-ico {
+  transform: translateY(-1px);
+}
+
+.qp-fade {
+  animation: qpFadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes qpFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.qp-kicker {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(23, 21, 23, 0.55);
+  font-weight: 700;
+}
+
+.qp-title {
+  margin: 8px 0 0;
+  font-family: var(--qp-serif);
+  font-weight: 700;
+  font-size: clamp(2rem, 8vw, 2.6rem);
+  line-height: 1.05;
+  color: var(--qp-ink);
+  letter-spacing: 0.02em;
+}
+
+.qp-lead {
+  margin: 12px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: rgba(23, 21, 23, 0.72);
+  max-width: 32ch;
+}
+
+.qp-card {
+  background: var(--qp-card);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: var(--qp-radius);
+  box-shadow: 0 10px 30px rgba(57, 37, 45, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.qp-card--rose {
+  background: linear-gradient(160deg, rgba(232, 218, 218, 0.82), rgba(255, 252, 249, 0.92));
+}
+
+.qp-card--gold {
+  background: linear-gradient(160deg, rgba(250, 244, 232, 0.92), rgba(255, 252, 249, 0.9));
+  box-shadow: 0 10px 30px rgba(180, 154, 106, 0.1);
+}
+
+.qp-section-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 22px 0 12px;
+}
+
+.qp-section-label span {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(23, 21, 23, 0.55);
+}
+
+.qp-section-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(57, 37, 45, 0.12);
+}
+
+/* Expiry highlight — champagne/gold, not red */
+.qp-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(180, 154, 106, 0.2), rgba(197, 143, 157, 0.14));
+  border: 1px solid rgba(180, 154, 106, 0.45);
+  color: var(--qp-gold-deep);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 0 0 3px rgba(180, 154, 106, 0.08);
+}
+
+.qp-expiry::before {
+  content: "◷";
+  font-size: 12px;
+  color: var(--qp-gold);
+}

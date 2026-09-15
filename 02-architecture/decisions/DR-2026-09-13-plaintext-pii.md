@@ -6,7 +6,7 @@ DR ID: DR-2026-09-13-plaintext-pii
 DATE: 2026-09-13
 AUTHOR ROLE: Architect / Security
 DECIDER: CEO
-STATUS: PROPOSED
+STATUS: ACCEPTED
 ```
 
 ## Контекст
@@ -106,20 +106,22 @@ C: Отложить production до B.
 ## Решение
 
 ```
-Выбрано: НЕ ВЫБРАНО (ждёт CEO)
-Почему: решение уровня оператора ПДн / заказчика, не разработчика.
-Кто решил: —
+Выбрано: B — field-level encryption (Fernet) для PII клиентов и display_name ADMIN.
+Почему: CEO 2026-09-13: шифровать сразу, чтобы dump/диск без ключа не отдавал ФИО/телефон/почту/ДР.
+Кто решил: CEO
 ```
 
 ## Следствия (после выбора)
 
 ```
-Если A: production допустим только с prod overlay, TLS, UFW, backup ACL,
-         без публикации БД, с ротацией bot token. Field-level encryption = v1.1+.
-
-Если B: отдельный architecture spike, не смешивать с текущим релизом engine.
-
-Если C: NO-RELEASE сохраняется до внедрения шифрования.
+B принято и внедрено 2026-09-13 без смены формул начисления/списания:
+- Fernet ciphertext в clients_client.full_name/phone/email/birth_date
+- HMAC blind indexes phone_hash / email_hash для lookup
+- birth_md (MMDD) только для birthday job — не год рождения
+- EncryptedTextField: AdminUser.display_name, ProfileChangeRequest old/new
+- telegram_id не шифруется: это ключ auth, не ФИО/телефон
+- PII_ENCRYPTION_KEY обязателен в prod overlay
+- Engine FIFO/pending/idempotency/redeem не менялись
 ```
 
 ## Ссылки

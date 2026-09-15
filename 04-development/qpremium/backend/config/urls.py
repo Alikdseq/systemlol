@@ -4,10 +4,13 @@ from django.conf import settings
 from django.urls import path, re_path
 from django.views.static import serve
 
+from legal import api as legal_api
 from loyalty import admin_api, views
 
 urlpatterns = [
     path("api/v1/health/", views.health),
+    path("api/v1/legal", legal_api.LegalDocumentListView.as_view()),
+    path("api/v1/legal/<slug:slug>", legal_api.LegalDocumentDetailView.as_view()),
     path("api/v1/auth/telegram", views.AuthTelegramView.as_view()),
     path("api/v1/auth/bot-resolve", views.BotResolveRoleView.as_view()),
     path("api/v1/auth/me", views.AuthMeView.as_view()),
@@ -25,6 +28,7 @@ urlpatterns = [
     path("api/v1/settings/public", views.PublicSettingsView.as_view()),
     path("api/v1/settings", admin_api.SettingsView.as_view()),
     path("api/v1/bot/welcome", views.BotWelcomeView.as_view()),
+    path("api/v1/bot/welcome-photo", views.BotWelcomePhotoView.as_view()),
     path("api/v1/accruals", views.AccrualCreateView.as_view()),
     path("api/v1/redemptions/preview", views.RedemptionPreviewView.as_view()),
     path("api/v1/redemptions", views.RedemptionCreateView.as_view()),

@@ -87,6 +87,19 @@ def _access_json(a: StoreAccess) -> dict:
     }
 
 
+def _parse_telegram_id(raw) -> int:
+    text = str(raw or "").strip().replace(" ", "")
+    if text.startswith("@"):
+        raise EngineError(
+            "validation_error",
+            "Нужен числовой Telegram ID, не @username. Узнать ID: бот @userinfobot",
+            400,
+        )
+    if not text.isdigit():
+        raise EngineError("validation_error", "Telegram ID — только цифры", 400)
+    return int(text)
+
+
 def _admin_json(a: AdminUser) -> dict:
     return {
         "id": str(a.id),
@@ -97,10 +110,13 @@ def _admin_json(a: AdminUser) -> dict:
     }
 
 
-def _settings_json(s: ProgramSettings) -> dict:
+def _settings_json(s: ProgramSettings, request=None) -> dict:
     photo_url = ""
     if s.bot_welcome_photo:
-        photo_url = s.bot_welcome_photo.url
+        if request is not None:
+            photo_url = request.build_absolute_uri(s.bot_welcome_photo.url)
+        else:
+            photo_url = s.bot_welcome_photo.url
     return {
         "accrual_percent": str(s.accrual_percent),
         "max_redeem_percent": str(s.max_redeem_percent),
@@ -193,7 +209,7 @@ class StoreAccessListCreateView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        qs = StoreAccess.objects.select_related("store").order_by("-created_at")
+        qs = StoreAccess.objects.select_related("store").filter(is_active=True).order_by("-created_at")
         store_id = request.query_params.get("store_id")
         if store_id:
             qs = qs.filter(store_id=store_id)
@@ -212,7 +228,7 @@ class StoreAccessListCreateView(APIView):
             from clients.services import normalize_phone
 
             phone = normalize_phone(phone_raw)
-            client = Client.objects.filter(phone=phone).first()
+            client = Client.objects.by_phone(phone).first()
             if not client:
                 raise EngineError(
                     "not_found",
@@ -282,6 +298,18 @@ class StoreAccessPatchView(APIView):
         _audit(request, "STORE_ACCESS_UPDATED", "store_access", access.id)
         return Response(_access_json(access))
 
+    def delete(self, request, pk):
+        access = get_object_or_404(StoreAccess.objects.select_related("store"), pk=pk)
+        access_id = access.id
+        payload = {
+            "telegram_id": access.telegram_id,
+            "store_id": str(access.store_id),
+            "store_name": access.store.name,
+        }
+        access.delete()
+        _audit(request, "STORE_ACCESS_DELETED", "store_access", access_id, payload)
+        return Response({"ok": True, "id": str(access_id)})
+
 
 class AdminListCreateView(APIView):
     permission_classes = [IsAdmin]
@@ -291,18 +319,16 @@ class AdminListCreateView(APIView):
         return _page(qs, request, _admin_json)
 
     def post(self, request):
-        try:
-            telegram_id = int(request.data.get("telegram_id"))
-        except (TypeError, ValueError) as exc:
-            raise EngineError("validation_error", "telegram_id обязателен", 400) from exc
+        telegram_id = _parse_telegram_id(request.data.get("telegram_id"))
         display_name = (request.data.get("display_name") or "").strip()
         with transaction.atomic():
-            if StoreAccess.objects.select_for_update().filter(telegram_id=telegram_id, is_active=True).exists():
-                raise EngineError("role_conflict", "Telegram ID уже STORE", 409)
+            StoreAccess.objects.select_for_update().filter(
+                telegram_id=telegram_id, is_active=True
+            ).update(is_active=False)
             existing = AdminUser.objects.filter(telegram_id=telegram_id).first()
             if existing:
                 if existing.is_active:
-                    raise EngineError("conflict", "ADMIN уже существует", 409)
+                    raise EngineError("conflict", "Этот Telegram ID уже администратор", 409)
                 existing.is_active = True
                 if display_name:
                     existing.display_name = display_name
@@ -351,11 +377,11 @@ class SettingsView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        return Response(_settings_json(ProgramSettings.get_solo()))
+        return Response(_settings_json(ProgramSettings.get_solo(), request))
 
     def patch(self, request):
         s = ProgramSettings.get_solo()
-        before = _settings_json(s)
+        before = _settings_json(s, request)
         decimal_fields = ("accrual_percent", "max_redeem_percent", "min_purchase_amount")
         int_fields = (
             "earned_ttl_days",
@@ -396,7 +422,7 @@ class SettingsView(APIView):
             s.bot_welcome_photo = None
         s.updated_by_telegram_id = request.actor.telegram_id
         s.save()
-        after = _settings_json(s)
+        after = _settings_json(s, request)
         diff = {k: {"from": before[k], "to": after[k]} for k in after if before.get(k) != after.get(k)}
         _audit(request, "SETTINGS_CHANGED", "settings", 1, {"diff_keys": list(diff.keys())})
         return Response(after)
@@ -411,9 +437,19 @@ class ClientListView(APIView):
         field = request.query_params.get("field", "name")
         if q:
             if field == "phone":
-                qs = qs.filter(phone__icontains=q)
+                from clients.services import normalize_phone
+
+                try:
+                    phone_n = normalize_phone(q)
+                except EngineError:
+                    qs = qs.none()
+                else:
+                    hit = Client.objects.by_phone(phone_n).first()
+                    qs = qs.filter(pk=hit.pk) if hit else qs.none()
             else:
-                qs = qs.filter(full_name__icontains=q)
+                needle = q.lower()
+                ids = [c.pk for c in qs.only("id", "full_name") if needle in (c.full_name or "").lower()]
+                qs = qs.filter(pk__in=ids)
         status = request.query_params.get("status")
         if status:
             qs = qs.filter(status=status)

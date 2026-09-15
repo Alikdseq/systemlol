@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 
+from clients.fields import EncryptedTextField
 from clients.models import Client
 from stores.models import Store
 
@@ -207,8 +208,8 @@ class ProfileChangeRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="profile_change_requests")
     field = models.CharField(max_length=50, default="birth_date")
-    old_value = models.CharField(max_length=100)
-    new_value = models.CharField(max_length=100)
+    old_value = EncryptedTextField()
+    new_value = EncryptedTextField()
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     decided_at = models.DateTimeField(null=True, blank=True)

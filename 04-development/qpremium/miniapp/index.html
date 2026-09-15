@@ -6,6 +6,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta name="qp-build" content="2026-09-14-design-preview-v4" />
     <title>Q Premium</title>
     <link rel="dns-prefetch" href="https://telegram.org" />
     <link rel="preconnect" href="https://telegram.org" crossorigin />
@@ -16,9 +18,14 @@
       body {
         margin: 0;
         height: 100%;
+        overflow: hidden;
         background: #ffffff;
         color: #000000;
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      #app {
+        height: 100%;
+        overflow: hidden;
       }
       #boot-splash {
         position: fixed;

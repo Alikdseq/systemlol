@@ -3,6 +3,9 @@
 
 Bot reads URL_FILE on each /start — no container recreate needed.
 Do NOT use env vars prefixed with TUNNEL_ (reserved by cloudflared).
+
+Health-check: if trycloudflare hostname dies (Error 1033) while container
+is still Up, kill cloudflared so a fresh quick tunnel is minted.
 """
 
 from __future__ import annotations
@@ -11,6 +14,7 @@ import json
 import os
 import re
 import subprocess
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -21,6 +25,8 @@ URL_RE = re.compile(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com")
 ORIGIN = os.environ.get("QP_ORIGIN_URL", "http://miniapp:80")
 ENV_FILE = Path(os.environ.get("ENV_FILE", "/work/.env"))
 URL_FILE = Path(os.environ.get("URL_FILE", "/work/miniapp_url.txt"))
+HEALTH_EVERY_SEC = int(os.environ.get("QP_TUNNEL_HEALTH_SEC", "40"))
+HEALTH_FAILS = int(os.environ.get("QP_TUNNEL_HEALTH_FAILS", "2"))
 
 current_miniapp = ""
 pending_url: str | None = None
@@ -101,6 +107,51 @@ def apply_url(base: str) -> None:
     print("[tunnel] url file + .env updated (open /start in bot)", flush=True)
 
 
+def probe_url(url: str) -> bool:
+    try:
+        req = urllib.request.Request(
+            url, method="GET", headers={"User-Agent": "qp-tunnel-health"}
+        )
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            code = getattr(resp, "status", 200) or 200
+            return 200 <= int(code) < 500
+    except Exception as exc:
+        print(f"[tunnel] health probe fail: {exc}", flush=True)
+        return False
+
+
+def health_watch(proc: subprocess.Popen[str]) -> None:
+    """If Cloudflare drops the quick hostname (1033), restart cloudflared."""
+    fails = 0
+    time.sleep(25)
+    while proc.poll() is None:
+        url = current_miniapp
+        if not url:
+            time.sleep(HEALTH_EVERY_SEC)
+            continue
+        if probe_url(url):
+            if fails:
+                print("[tunnel] health ok again", flush=True)
+            fails = 0
+        else:
+            fails += 1
+            print(
+                f"[tunnel] health fail streak={fails}/{HEALTH_FAILS} url={url}",
+                flush=True,
+            )
+            if fails >= HEALTH_FAILS:
+                print(
+                    "[tunnel] public URL dead — killing cloudflared for fresh hostname",
+                    flush=True,
+                )
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                return
+        time.sleep(HEALTH_EVERY_SEC)
+
+
 def handle_line(line: str) -> None:
     global pending_url
     line = line.rstrip()
@@ -111,18 +162,28 @@ def handle_line(line: str) -> None:
         pending_url = m.group(0)
         print(f"[tunnel] got candidate url: {pending_url}", flush=True)
         return
-    # Apply only after Cloudflare confirms connection
     if pending_url and "Registered tunnel connection" in line:
         apply_url(pending_url)
         pending_url = None
 
 
 def run_once() -> int:
-    global pending_url
+    global pending_url, current_miniapp
     pending_url = None
-    # Clear cloudflared-related env that could leak from compose
+    # Force re-apply menu/file on each cloudflared start
+    current_miniapp = ""
     env = {k: v for k, v in os.environ.items() if not k.startswith("TUNNEL_")}
-    cmd = ["cloudflared", "tunnel", "--url", ORIGIN, "--no-autoupdate"]
+    cmd = [
+        "cloudflared",
+        "tunnel",
+        "--url",
+        ORIGIN,
+        "--no-autoupdate",
+        "--edge-ip-version",
+        "4",
+        "--protocol",
+        "http2",
+    ]
     print(f"[tunnel] starting: {' '.join(cmd)}", flush=True)
     proc = subprocess.Popen(
         cmd,
@@ -133,6 +194,7 @@ def run_once() -> int:
         env=env,
     )
     assert proc.stdout is not None
+    threading.Thread(target=health_watch, args=(proc,), daemon=True).start()
     try:
         for line in proc.stdout:
             handle_line(line)

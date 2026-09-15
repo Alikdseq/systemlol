@@ -1,18 +1,19 @@
-# How to test (local)
+# Как проверять Q Premium
 
-См. также `backend/README.md`.
+Целевой стек: `04-development/qpremium/` (Docker Compose).
 
+```powershell
+cd projects\clothing-loyalty\04-development\qpremium
+docker compose up --build -d
+curl http://localhost:8000/api/v1/health/
 ```
-cd 04-development/backend
-.venv\Scripts\activate
-python manage.py test loyalty
-python manage.py runserver
+
+Mini App (браузер): http://localhost:8080/app/
+
+Тесты backend:
+
+```powershell
+docker compose exec backend python manage.py test
 ```
 
-Касса: cashier1 / devpass  
-Админ: admin / devpass  
-
-Чек 1000 → начисление 100 бонусов (10%).  
-Списание: в 1С скидку вручную на ту же сумму.
-
-Пароли только для локальной машины. Не production.
+Production: см. `qpremium/DEPLOY.md` (домен `https://q-premium.ru`).

@@ -1,6 +1,9 @@
 .env
 .env.local
 .env.prod
+_tmp_gate_check.py
+_check_prod_ports.py
+backend/_tmp_gate_check.py
 **/.venv/
 **/__pycache__/
 **/node_modules/

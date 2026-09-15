@@ -6,14 +6,7 @@
       Сначала «Рассчитать», затем подтвердите. Количество баллов вводит система, не кассир.
     </q-banner>
     <q-form class="q-gutter-md" @submit.prevent="preview">
-      <q-input
-        v-model="amount"
-        type="text"
-        inputmode="decimal"
-        label="Сумма покупки, ₽"
-        outlined
-        stack-label
-      />
+      <TgField v-model="amount" label="Сумма покупки, ₽" />
       <q-btn type="submit" color="secondary" :loading="loadingPreview" label="Рассчитать" class="full-width" />
     </q-form>
 
@@ -43,6 +36,7 @@ import { useRoute } from "vue-router";
 import { api, newIdempotencyKey } from "@/shared/api";
 import { useAuthStore } from "@/features/auth/authStore";
 import { storeIdForWrite } from "@/shared/storeContext";
+import TgField from "@/shared/TgField.vue";
 
 const route = useRoute();
 const auth = useAuthStore();

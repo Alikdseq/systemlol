@@ -1,69 +1,51 @@
 <template>
-  <q-layout view="hHh lpR fFf">
-    <q-header elevated class="bg-dark text-dark-pink">
-      <q-toolbar>
-        <q-toolbar-title>Регистрация в Q Premium</q-toolbar-title>
-      </q-toolbar>
-    </q-header>
-    <q-page-container>
-      <q-page class="q-pa-md">
+  <div class="register-page">
+    <header class="register-head">Регистрация в Q Premium</header>
+    <div class="q-pa-md">
         <div class="text-body2 text-grey-7 q-mb-md">
-          Заполните данные один раз. Обязательное согласие — по 152‑ФЗ и правилам программы.
+          Заполните данные один раз. Откройте и прочитайте тексты согласий до отметки — это требование 152‑ФЗ и закона о рекламе.
         </div>
         <q-form class="q-gutter-md" @submit.prevent="submit">
-          <q-input
-            v-model="form.full_name"
-            label="ФИО"
-            outlined
-            stack-label
-            :rules="[req]"
-            autocomplete="name"
-          />
-          <q-input
+          <TgField v-model="form.full_name" label="ФИО" autocomplete="name" />
+          <TgField
             v-model="form.phone"
-            type="text"
-            inputmode="tel"
-            autocomplete="tel"
             label="Телефон"
+            autocomplete="tel"
             hint="Можно 8900…, +7900…, 900… — система приведёт к единому виду"
-            outlined
-            stack-label
-            :rules="[req]"
           />
-          <q-input
-            v-model="form.email"
-            type="email"
-            inputmode="email"
-            autocomplete="email"
-            label="Email"
-            outlined
-            stack-label
-            :rules="[req]"
-          />
-          <q-input
-            v-model="form.birth_date"
-            type="date"
-            label="Дата рождения"
-            outlined
-            stack-label
-            :rules="[req]"
-          />
+          <TgField v-model="form.email" label="Email" autocomplete="email" />
+          <TgField v-model="form.birth_date" label="Дата рождения" type="date" />
 
-          <q-checkbox
-            v-model="form.rulesAndPersonal"
-            label="Принимаю правила программы лояльности и даю согласие на обработку персональных данных (152‑ФЗ) *"
-          />
-          <q-checkbox
-            v-model="form.advertising"
-            label="Согласен получать рекламные сообщения (необязательно, для рассылок)"
-          />
+          <q-checkbox v-model="form.programRules">
+            <span>
+              Принимаю
+              <a href="#" class="text-primary" @click.prevent="openDoc('program-rules')">правила программы лояльности</a>
+              *
+            </span>
+          </q-checkbox>
+          <q-checkbox v-model="form.personalData">
+            <span>
+              Даю согласие на
+              <a href="#" class="text-primary" @click.prevent="openDoc('personal-data')">обработку персональных данных</a>
+              и подтверждаю, что ознакомлен(а) с
+              <a href="#" class="text-primary" @click.prevent="openDoc('privacy')">политикой конфиденциальности</a>
+              (152‑ФЗ) *
+            </span>
+          </q-checkbox>
+          <q-checkbox v-model="form.advertising">
+            <span>
+              Согласен(на) получать
+              <a href="#" class="text-primary" @click.prevent="openDoc('advertising')">рекламу в Telegram-боте</a>
+              (необязательно, на участие в программе не влияет)
+            </span>
+          </q-checkbox>
 
           <div v-if="error" class="text-negative text-body2">{{ error }}</div>
           <q-btn type="submit" color="primary" class="full-width" :loading="loading" label="Зарегистрироваться" />
         </q-form>
-      </q-page>
-    </q-page-container>
-  </q-layout>
+        <LegalDocDialog v-model="dialogOpen" :slug="dialogSlug" />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -71,25 +53,32 @@ import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { api, getToken } from "@/shared/api";
 import { useAuthStore } from "@/features/auth/authStore";
+import LegalDocDialog from "@/shared/LegalDocDialog.vue";
+import TgField from "@/shared/TgField.vue";
 
 const auth = useAuthStore();
 const router = useRouter();
 const loading = ref(false);
 const error = ref("");
+const dialogOpen = ref(false);
+const dialogSlug = ref("privacy");
 
 const form = reactive({
   full_name: "",
   phone: "",
   email: "",
   birth_date: "",
-  rulesAndPersonal: false,
+  programRules: false,
+  personalData: false,
   advertising: false,
 });
 
-const req = (v: string) => (!!v && String(v).trim().length > 0) || "Обязательное поле";
+function openDoc(slug: string) {
+  dialogSlug.value = slug;
+  dialogOpen.value = true;
+}
 
 onMounted(async () => {
-  // Гарантируем свежий Bearer до сабмита (иначе DRF: «учетные данные не были предоставлены»)
   if (!getToken()) {
     await auth.authenticate();
   }
@@ -97,8 +86,16 @@ onMounted(async () => {
 
 async function submit() {
   error.value = "";
-  if (!form.rulesAndPersonal) {
-    error.value = "Нужно принять правила и согласие на обработку персональных данных";
+  if (!form.full_name.trim() || !form.phone.trim() || !form.email.trim() || !form.birth_date) {
+    error.value = "Заполните ФИО, телефон, email и дату рождения";
+    return;
+  }
+  if (!form.programRules) {
+    error.value = "Нужно открыть и принять правила программы лояльности";
+    return;
+  }
+  if (!form.personalData) {
+    error.value = "Нужно дать согласие на обработку персональных данных и ознакомиться с политикой";
     return;
   }
   loading.value = true;
@@ -118,7 +115,6 @@ async function submit() {
         email: form.email.trim(),
         birth_date: form.birth_date,
         consents: {
-          RULES_AND_PERSONAL_DATA: true,
           PROGRAM_RULES: true,
           PERSONAL_DATA: true,
           ADVERTISING: form.advertising,

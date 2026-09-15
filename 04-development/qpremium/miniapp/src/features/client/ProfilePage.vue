@@ -2,18 +2,10 @@
   <q-page class="q-pa-md">
     <div class="text-h6 q-mb-md">Профиль</div>
     <q-form class="q-gutter-md" @submit.prevent="save">
-      <q-input v-model="form.full_name" label="ФИО" outlined stack-label autocomplete="name" />
-      <q-input
-        v-model="form.phone"
-        type="text"
-        inputmode="tel"
-        autocomplete="tel"
-        label="Телефон"
-        outlined
-        stack-label
-      />
-      <q-input v-model="form.email" type="email" inputmode="email" label="Email" outlined stack-label />
-      <q-input v-model="form.birth_date" type="date" label="Дата рождения" outlined stack-label />
+      <TgField v-model="form.full_name" label="ФИО" autocomplete="name" />
+      <TgField v-model="form.phone" label="Телефон" autocomplete="tel" />
+      <TgField v-model="form.email" label="Email" autocomplete="email" />
+      <TgField v-model="form.birth_date" label="Дата рождения" type="date" />
       <q-banner v-if="pendingBirth && auth.role !== 'ADMIN'" class="bg-orange-1" rounded>
         Запрос на смену даты рождения на {{ pendingBirth }} ожидает подтверждения администратора.
       </q-banner>
@@ -28,6 +20,7 @@
             <div class="text-caption text-grey-7">
               {{ advertising ? "Включено: можно присылать акции и новости" : "Выключено: рассылки не приходят" }}
             </div>
+            <a href="#" class="text-caption text-primary" @click.prevent="advDoc = true">Текст согласия на рекламу (38‑ФЗ)</a>
           </div>
           <q-toggle
             v-model="advertising"
@@ -37,6 +30,10 @@
           />
         </q-card-section>
       </q-card>
+      <a href="#" class="text-caption text-primary" @click.prevent="privacyDoc = true">Политика обработки персональных данных</a>
+
+      <LegalDocDialog v-model="advDoc" slug="advertising" />
+      <LegalDocDialog v-model="privacyDoc" slug="privacy" />
 
       <div v-if="error" class="text-negative">{{ error }}</div>
       <div v-if="ok" class="text-positive">{{ ok }}</div>
@@ -49,10 +46,14 @@
 import { onMounted, reactive, ref } from "vue";
 import { api } from "@/shared/api";
 import { useAuthStore } from "@/features/auth/authStore";
+import LegalDocDialog from "@/shared/LegalDocDialog.vue";
+import TgField from "@/shared/TgField.vue";
 
 const auth = useAuthStore();
 const form = reactive({ full_name: "", phone: "", email: "", birth_date: "" });
 const advertising = ref(false);
+const advDoc = ref(false);
+const privacyDoc = ref(false);
 const pendingBirth = ref<string | null>(null);
 const loading = ref(false);
 const advBusy = ref(false);

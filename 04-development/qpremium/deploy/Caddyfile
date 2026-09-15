@@ -1,0 +1,46 @@
+# Q Premium — reverse proxy on VPS host
+# Domain: q-premium.ru → DNS A → 83.222.17.76
+# Install:
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+
+www.q-premium.ru {
+	redir https://q-premium.ru{uri} permanent
+}
+
+q-premium.ru {
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	handle /app* {
+		reverse_proxy 127.0.0.1:8080 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote}
+		}
+	}
+
+	handle /api* {
+		reverse_proxy 127.0.0.1:8000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote}
+			header_up Host {host}
+		}
+	}
+
+	handle /media* {
+		reverse_proxy 127.0.0.1:8080 {
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	handle {
+		redir /app/ permanent
+	}
+}

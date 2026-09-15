@@ -18,14 +18,10 @@
     </q-banner>
 
     <q-form class="q-gutter-md" @submit.prevent="lookup">
-      <q-input
+      <TgField
         v-model="phone"
-        type="text"
-        inputmode="tel"
-        autocomplete="tel"
         label="Телефон"
-        outlined
-        stack-label
+        autocomplete="tel"
         hint="+7XXXXXXXXXX / 8900… / 900…"
       />
       <q-btn
@@ -47,6 +43,7 @@ import { useRouter } from "vue-router";
 import { api } from "@/shared/api";
 import { useAuthStore } from "@/features/auth/authStore";
 import { getSelectedStore, setSelectedStore } from "@/shared/storeContext";
+import TgField from "@/shared/TgField.vue";
 
 const auth = useAuthStore();
 const phone = ref("");

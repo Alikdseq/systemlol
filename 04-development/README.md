@@ -1,13 +1,10 @@
 # 04 — Development
 
-Реализация Backend / Frontend / Mobile и пакет UI/UX.
+Целевая реализация: **`qpremium/`** (Django API + Vue Mini App + bot + Celery).
 
-Рекомендуемые подпапки по мере надобности:
+- `qpremium/` — единственный runtime-код
+- `uiux/` — дизайн-материалы
+- `notes/` — как проверять
+- `LEGACY_NOTICE.md` — старый прототип удалён
 
-- `backend/`
-- `frontend/`
-- `mobile/`
-- `uiux/`
-- `notes/` — как проверять, что не сделано
-
-Код может жить здесь или в отдельном репозитории. Если код снаружи — здесь лежит карта: где репозиторий, какая ветка, какой контур.
+Деплой: `qpremium/DEPLOY.md` → `https://q-premium.ru`

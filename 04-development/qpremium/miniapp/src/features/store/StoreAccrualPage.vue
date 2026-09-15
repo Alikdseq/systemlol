@@ -11,29 +11,14 @@
       </template>
     </q-banner>
     <q-form class="q-gutter-md" @submit.prevent="submit">
-      <q-input
-        v-model="amount"
-        type="text"
-        inputmode="decimal"
-        label="Сумма покупки, ₽"
-        outlined
-        stack-label
-      />
+      <TgField v-model="amount" label="Сумма покупки, ₽" />
       <div v-if="error" class="text-negative">{{ error }}</div>
-      <div v-if="result" class="text-positive">
-        <template v-if="result.status === 'CONFIRMED'">
-          Начислено сразу: {{ result.points }} баллов. Клиент получит уведомление.
-        </template>
-        <template v-else>
-          Создано PENDING: {{ result.points }} баллов — подтвердите в разделе «Ожидают».
-        </template>
-      </div>
       <q-btn
         type="submit"
         color="primary"
         class="full-width"
         :loading="loading"
-        :disable="loading"
+        :disable="loading || done"
         :label="auth.role === 'ADMIN' ? 'Начислить сразу' : 'Отправить на подтверждение'"
       />
     </q-form>
@@ -42,24 +27,27 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import { Notify } from "quasar";
 import { api, newIdempotencyKey } from "@/shared/api";
 import { useAuthStore } from "@/features/auth/authStore";
 import { storeIdForWrite } from "@/shared/storeContext";
+import TgField from "@/shared/TgField.vue";
 
 const route = useRoute();
+const router = useRouter();
 const auth = useAuthStore();
 const id = route.params.id as string;
 const amount = ref("");
 const loading = ref(false);
+const done = ref(false);
 const error = ref("");
-const result = ref<{ points: number; status?: string } | null>(null);
 let idemKey = newIdempotencyKey();
 
 async function submit() {
+  if (loading.value || done.value) return;
   loading.value = true;
   error.value = "";
-  result.value = null;
   try {
     const storeId = storeIdForWrite(auth.role);
     if (auth.role === "ADMIN" && !storeId) {
@@ -77,10 +65,16 @@ async function submit() {
       headers: { "Idempotency-Key": idemKey },
       json: payload,
     });
-    result.value = data;
-    idemKey = newIdempotencyKey();
+    done.value = true;
+    const msg =
+      data.status === "CONFIRMED" || auth.role === "ADMIN"
+        ? `Начислено ${data.points} баллов`
+        : `Отправлено на подтверждение: ${data.points} баллов`;
+    Notify.create({ type: "positive", message: msg, timeout: 2500 });
+    await router.replace("/store");
   } catch (e: unknown) {
     error.value = (e as { message?: string }).message || "Ошибка";
+    idemKey = newIdempotencyKey();
   } finally {
     loading.value = false;
   }

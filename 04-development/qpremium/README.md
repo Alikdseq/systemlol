@@ -28,11 +28,11 @@ Telegram **кнопка WebApp** принимает только **HTTPS**.
 |------|-----------------------------|
 | Локально без Telegram-кнопки | `http://localhost:8080/app/` — открываете в браузере |
 | Проверка внутри Telegram до VPS | HTTPS-туннель на 8080, напр. Cloudflare Tunnel / ngrok → `https://xxxx.trycloudflare.com/app/` |
-| Production | `https://ваш-домен/app/` после SSL (nginx на VPS) |
+| Production | `https://q-premium.ru/app/` (Caddy TLS на VPS `83.222.17.76`) |
 
-В BotFather: Bot Settings → Menu Button / Configure Mini App → тот же HTTPS URL.
+В BotFather: Bot Settings → Menu Button / Configure Mini App → `https://q-premium.ru/app/`.
 
-Пока нет HTTPS-домена — бот работает (уведомления, /start), а кнопка Mini App в чате не активна (нужен https). UI тестируйте в браузере на `:8080`.
+Деплой: см. `DEPLOY.md`.
 
 ## Telegram token
 

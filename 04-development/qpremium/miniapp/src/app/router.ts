@@ -54,6 +54,34 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: "/design-preview",
+    component: () => import("@/features/design-preview/DesignPreviewShell.vue"),
+    meta: { needWork: true, workRoles: ["ADMIN"], designPreview: true },
+    children: [
+      { path: "", redirect: { name: "design-balance" } },
+      {
+        path: "balance",
+        name: "design-balance",
+        component: () => import("@/features/design-preview/DesignBalancePage.vue"),
+      },
+      {
+        path: "promos",
+        name: "design-promos",
+        component: () => import("@/features/design-preview/DesignPromosPage.vue"),
+      },
+      {
+        path: "rules",
+        name: "design-rules",
+        component: () => import("@/features/design-preview/DesignRulesPage.vue"),
+      },
+      {
+        path: "data",
+        name: "design-data",
+        component: () => import("@/features/design-preview/DesignDataPage.vue"),
+      },
+    ],
+  },
+  {
     path: "/admin",
     component: () => import("@/app/layouts/AdminLayout.vue"),
     meta: { needWork: true, workRoles: ["ADMIN"] },
@@ -110,7 +138,9 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (to.name === "boot") return true;
 
-  if (auth.state === "AUTH_LOADING" || !auth.ensureToken()) {
+  if (auth.state === "AUTHENTICATED" && auth.ensureToken()) {
+    // already signed in
+  } else if (auth.state === "AUTH_LOADING" || !auth.ensureToken()) {
     bootPromise ??= auth.authenticate();
     await bootPromise;
     bootPromise = null;

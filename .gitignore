@@ -23,9 +23,13 @@ backups/
 **/_gate_results.json
 05-qa/release-gate-*.json
 
+04-development/qpremium/backend/_tmp_gate_check.py
+04-development/qpremium/backend/_tmp_tg_check.py
+04-development/qpremium/_check_prod_ports.py
+04-development/_audit_smoke_out.json
+
 # Runtime
 **/celerybeat-schedule
 **/celerybeat-schedule.*
-04-development/_audit_smoke_out.json
 
 .DS_Store

@@ -38,7 +38,7 @@
     <div class="text-subtitle1 q-mb-sm">Кассиры</div>
     <div class="text-caption text-grey-7 q-mb-sm">
       Привязка по телефону. Кассир сначала регистрируется в программе (как клиент), затем вы привязываете его номер к магазину.
-      Администратора сделать кассиром нельзя.
+      Администратора сделать кассиром нельзя. Удаление снимает доступ к кассе — человек снова обычный клиент.
     </div>
     <q-list bordered separator dense class="q-mb-md">
       <q-item v-for="a in accesses" :key="a.id">
@@ -46,14 +46,18 @@
           <q-item-label>
             {{ a.full_name || "Кассир" }} · {{ a.phone || "телефон не найден" }} → {{ a.store_name }}
           </q-item-label>
-          <q-item-label caption>{{ a.is_active ? "активен" : "отключён" }}</q-item-label>
         </q-item-section>
         <q-item-section side>
           <q-btn
-            flat
-            dense
-            :label="a.is_active ? 'Отключить' : 'Включить'"
-            @click="toggleAccess(a)"
+            unelevated
+            no-caps
+            color="negative"
+            text-color="white"
+            class="cashier-delete-btn"
+            label="Удалить"
+            :loading="busy === a.id + 'del'"
+            :disable="Boolean(busy)"
+            @click="deleteAccess(a)"
           />
         </q-item-section>
       </q-item>
@@ -65,7 +69,7 @@
         <q-select v-model="storeId" :options="storeOpts" dense outlined label="Магазин" emit-value map-options />
       </div>
       <div class="col-12 col-sm-4">
-        <q-input v-model="phone" outlined stack-label type="text" inputmode="tel" label="Телефон кассира" />
+        <q-input v-model="phone" outlined stack-label type="text" label="Телефон кассира" />
       </div>
       <div class="col-12 col-sm-3">
         <q-btn color="primary" text-color="dark" class="full-width" label="Привязать" @click="addAccess" />
@@ -188,16 +192,26 @@ async function addAccess() {
   }
 }
 
-async function toggleAccess(a: Access) {
+async function deleteAccess(a: Access) {
+  const who = a.full_name || a.phone || "кассира";
+  if (
+    !confirm(
+      `Удалить кассира «${who}» из магазина «${a.store_name}»? Доступ к кассе исчезнет, человек снова будет обычным клиентом.`,
+    )
+  ) {
+    return;
+  }
+  busy.value = a.id + "del";
+  msg.value = "";
   error.value = "";
   try {
-    await api(`/api/v1/store-accesses/${a.id}`, {
-      method: "PATCH",
-      json: { is_active: !a.is_active },
-    });
-    await load();
+    await api(`/api/v1/store-accesses/${a.id}`, { method: "DELETE" });
+    accesses.value = accesses.value.filter((x) => x.id !== a.id);
+    msg.value = "Кассир удалён";
   } catch (e: unknown) {
     error.value = (e as { message?: string }).message || "Ошибка";
+  } finally {
+    busy.value = "";
   }
 }
 

@@ -14,6 +14,17 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 # Unsigned JSON auth ONLY when both DEBUG=1 and ALLOW_DEV_AUTH=1 (never on public tunnel/prod)
 ALLOW_DEV_AUTH = os.getenv("ALLOW_DEV_AUTH", "0") == "1"
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+for extra in (
+    "localhost",
+    "127.0.0.1",
+    "backend",
+    "miniapp",
+    ".trycloudflare.com",
+    "q-premium.ru",
+    "www.q-premium.ru",
+):
+    if extra not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(extra)
 
 # Production transport hardening (activate when behind HTTPS reverse proxy)
 if not DEBUG:
@@ -28,6 +39,10 @@ if not DEBUG:
         SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
         SECURE_HSTS_INCLUDE_SUBDOMAINS = True
         SECURE_HSTS_PRELOAD = True
+    # CSRF for admin forms behind domain HTTPS
+    _public = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+    if _public.startswith("https://"):
+        CSRF_TRUSTED_ORIGINS = [_public]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -91,6 +106,7 @@ if os.getenv("DATABASE_URL"):
             "PASSWORD": password,
             "HOST": host,
             "PORT": port,
+            "CONN_MAX_AGE": 60,
         }
     }
 else:
@@ -118,21 +134,10 @@ ACCESS_TOKEN_TTL_SEC = int(os.getenv("ACCESS_TOKEN_TTL_SEC", "86400"))
 BACKUP_DIR = os.getenv("BACKUP_DIR", str(BASE_DIR / "backups"))
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
 
-# Consent text versions (replace with Заказчик texts before prod)
-CONSENT_TEXT = {
-    "PROGRAM_RULES": {
-        "version": "v1.0",
-        "text": "Я принимаю правила программы лояльности Q Premium.",
-    },
-    "PERSONAL_DATA": {
-        "version": "v1.0",
-        "text": "Я даю согласие на обработку персональных данных в соответствии с политикой оператора.",
-    },
-    "ADVERTISING": {
-        "version": "v1.0",
-        "text": "Я согласен получать рекламные и информационные сообщения о магазине Q Premium.",
-    },
-}
+from legal.loader import consent_text as _consent_text
+
+# Полные тексты 152-ФЗ / 38-ФЗ: backend/legal/documents/. Версия v2.0.
+CONSENT_TEXT = _consent_text()
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

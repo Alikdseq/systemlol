@@ -7,7 +7,7 @@
 | `TZ01.txt` | Текст ТЗ v1.3 (source) |
 | `Q-Premium-TZ-v1.3.docx` | ТЗ для Заказчика |
 | `Q-Premium-Dogovor-razrabotki.docx` | Договор (чёрный текст, подписанная редакция) |
-| `Q-Premium-Dogovor-razrabotki.pdf` | PDF договора |
+| `legal/` | Политика ПДн v2.0, согласия 152-ФЗ и 38-ФЗ |
 
 ## Инженерный пакет (для разработки)
 

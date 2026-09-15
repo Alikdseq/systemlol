@@ -1,5 +1,6 @@
 from decimal import Decimal, InvalidOperation
 
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -367,23 +368,50 @@ class PublicSettingsView(APIView):
 
 
 class BotWelcomeView(APIView):
-    """Публичный endpoint для бота: текст + фото приветствия."""
+    """Публичный endpoint для бота: текст + есть ли фото."""
 
     authentication_classes = []
     permission_classes = [AllowAny]
 
     def get(self, request):
         s = ProgramSettings.get_solo()
-        photo_url = ""
-        if s.bot_welcome_photo:
-            photo_url = f"{settings.PUBLIC_BASE_URL}{s.bot_welcome_photo.url}"
+        has_photo = bool(s.bot_welcome_photo)
         return Response(
             {
                 "text": s.bot_welcome_text
                 or "Добро пожаловать в Q Premium — программу лояльности магазинов одежды.",
-                "photo_url": photo_url,
+                "has_photo": has_photo,
+                "photo_url": "/api/v1/bot/welcome-photo" if has_photo else "",
             }
         )
+
+
+class BotWelcomePhotoView(APIView):
+    """Отдаёт файл приветствия с диска — без публичного HTTP к backend:8000."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        s = ProgramSettings.get_solo()
+        if not s.bot_welcome_photo:
+            return Response(status=404)
+        try:
+            fh = s.bot_welcome_photo.open("rb")
+        except FileNotFoundError:
+            return Response(status=404)
+        name = s.bot_welcome_photo.name or "welcome.jpg"
+        content_type = "image/jpeg"
+        lower = name.lower()
+        if lower.endswith(".png"):
+            content_type = "image/png"
+        elif lower.endswith(".webp"):
+            content_type = "image/webp"
+        elif lower.endswith(".gif"):
+            content_type = "image/gif"
+        resp = FileResponse(fh, content_type=content_type)
+        resp["Cache-Control"] = "public, max-age=3600"
+        return resp
 
 
 class ClientLookupView(APIView):
@@ -392,7 +420,7 @@ class ClientLookupView(APIView):
 
     def post(self, request):
         phone = normalize_phone(request.data.get("phone", ""))
-        client = Client.objects.filter(phone=phone).first()
+        client = Client.objects.by_phone(phone).first()
         if not client:
             raise EngineError("not_found", "Клиент не найден", 404)
         data = {

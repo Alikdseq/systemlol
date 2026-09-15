@@ -32,21 +32,6 @@ export function collectInitData(): string {
   return JSON.stringify({ id: Number(devId) });
 }
 
-function scrollFocusedIntoView(): void {
-  const el = document.activeElement as HTMLElement | null;
-  if (!el) return;
-  const tag = (el.tagName || "").toLowerCase();
-  if (tag !== "input" && tag !== "textarea" && tag !== "select") return;
-  // После открытия клавиатуры WebView пересчитывает высоту
-  window.setTimeout(() => {
-    try {
-      el.scrollIntoView({ block: "center", behavior: "smooth", inline: "nearest" });
-    } catch {
-      el.scrollIntoView(true);
-    }
-  }, 120);
-}
-
 export function bootTelegramUi(): void {
   const wa = getTelegramWebApp();
   if (!wa) return;
@@ -54,28 +39,6 @@ export function bootTelegramUi(): void {
   wa.ready();
   wa.expand();
 
-  // Меньше конфликтов скролла с клавиатурой (Bot API 7+)
-  try {
-    const anyWa = wa as TelegramWebApp & {
-      disableVerticalSwipes?: () => void;
-      isVerticalSwipesEnabled?: boolean;
-    };
-    if (typeof anyWa.disableVerticalSwipes === "function") {
-      anyWa.disableVerticalSwipes();
-    } else if ("isVerticalSwipesEnabled" in anyWa) {
-      anyWa.isVerticalSwipesEnabled = false;
-    }
-  } catch {
-    /* older clients */
-  }
-
-  // CSS var для высоты viewport Mini App
-  const applyH = () => {
-    const h = wa.viewportStableHeight || wa.viewportHeight || window.innerHeight;
-    document.documentElement.style.setProperty("--tg-viewport-stable-height", `${h}px`);
-  };
-  applyH();
-  wa.onEvent?.("viewportChanged", applyH);
-
-  document.addEventListener("focusin", scrollFocusedIntoView, true);
+  // Не трогаем viewport при открытии клавиатуры: смена min-height
+  // сбрасывает фокус в Android/iOS WebView, и символы не вводятся.
 }

@@ -108,37 +108,46 @@ def _role_suffix(role: str) -> str:
 async def cmd_start(message: Message) -> None:
     if not message.from_user:
         return
-    role = _resolve_role(message.from_user.id)
-    url = _miniapp_url()
-    kb = _webapp_keyboard()
-    await _sync_menu_button(message, url)
+    try:
+        role = _resolve_role(message.from_user.id)
+        url = _miniapp_url()
+        kb = _webapp_keyboard()
+        await _sync_menu_button(message, url)
 
-    welcome = _fetch_welcome_settings()
-    text = (welcome.get("text") or "").strip() or (
-        "Добро пожаловать в Q Premium — программу лояльности магазинов одежды."
-    )
-    text = text + _role_suffix(role)
-    photo_url = (welcome.get("photo_url") or "").strip()
-
-    # Ссылка только в кнопках («Открыть Q Premium» и меню Q Premium), не в тексте
-    if not url.startswith("https://"):
-        text += (
-            "\n\n<i>Mini App пока недоступен: нужен HTTPS-туннель. "
-            "После запуска туннеля нажмите /start ещё раз.</i>"
+        welcome = _fetch_welcome_settings()
+        text = (welcome.get("text") or "").strip() or (
+            "Добро пожаловать в Q Premium — программу лояльности магазинов одежды."
         )
+        text = text + _role_suffix(role)
+        if url.startswith("https://"):
+            text += (
+                "\n\nНажмите кнопку «Открыть Q Premium» ниже — только в этом сообщении. "
+                "Старые кнопки из прошлых сообщений не работают."
+            )
+        else:
+            text += (
+                "\n\n<i>Mini App пока недоступен: нужен HTTPS-туннель. "
+                "После запуска туннеля нажмите /start ещё раз.</i>"
+            )
 
-    if photo_url:
-        try:
-            with httpx.Client(timeout=20.0) as client:
-                img = client.get(photo_url)
-                img.raise_for_status()
-                photo = BufferedInputFile(img.content, filename="welcome.jpg")
-            await message.answer_photo(photo, caption=text[:1024], reply_markup=kb)
-            return
-        except Exception:  # noqa: BLE001
-            logger.exception("welcome photo send failed, fallback to text")
+        if welcome.get("has_photo"):
+            try:
+                with httpx.Client(timeout=20.0) as client:
+                    img = client.get(f"{_api_base()}/api/v1/bot/welcome-photo")
+                    img.raise_for_status()
+                    photo = BufferedInputFile(img.content, filename="welcome.jpg")
+                caption = text[:1024]
+                await message.answer_photo(photo, caption=caption, reply_markup=kb)
+                return
+            except Exception:  # noqa: BLE001
+                logger.exception("welcome photo send failed, fallback to text")
 
-    await message.answer(text, reply_markup=kb)
+        await message.answer(text, reply_markup=kb)
+    except Exception:
+        logger.exception("/start failed")
+        await message.answer(
+            "Приложение запущено. Нажмите /start ещё раз, если кнопки нет."
+        )
 
 
 @router.message(F.text)

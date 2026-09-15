@@ -5,7 +5,6 @@
       <q-input
         v-model="form.accrual_percent"
         type="text"
-        inputmode="decimal"
         label="Процент начисления, %"
         hint="Сколько баллов от суммы покупки (например 5 = 5%)"
         outlined
@@ -14,7 +13,6 @@
       <q-input
         v-model="form.max_redeem_percent"
         type="text"
-        inputmode="decimal"
         label="Максимум списания от покупки, %"
         hint="Какую долю чека можно оплатить баллами (например 30)"
         outlined
@@ -23,7 +21,6 @@
       <q-input
         v-model="form.min_purchase_amount"
         type="text"
-        inputmode="decimal"
         label="Минимальная сумма покупки для начисления, ₽"
         hint="Ниже этой суммы баллы не начисляются"
         outlined
@@ -32,7 +29,6 @@
       <q-input
         v-model="form.earned_ttl_days"
         type="text"
-        inputmode="numeric"
         label="Срок накопительных баллов, дней"
         hint="Через сколько дней сгорают баллы с покупок"
         outlined
@@ -41,7 +37,6 @@
       <q-input
         v-model="form.gift_ttl_days"
         type="text"
-        inputmode="numeric"
         label="Срок подарочных баллов, дней"
         hint="Срок жизни подарков и бонусов за регистрацию/ДР"
         outlined
@@ -50,7 +45,6 @@
       <q-input
         v-model="form.registration_gift_points"
         type="text"
-        inputmode="numeric"
         label="Подарок за регистрацию, баллов"
         outlined
         stack-label
@@ -58,7 +52,6 @@
       <q-input
         v-model="form.birthday_gift_points"
         type="text"
-        inputmode="numeric"
         label="Подарок в день рождения, баллов"
         outlined
         stack-label
@@ -79,7 +72,6 @@
       <q-input
         v-model="form.points_expiry_warning_days"
         type="text"
-        inputmode="numeric"
         label="За сколько дней предупреждать"
         hint="Например 7 — за неделю до сгорания"
         outlined
@@ -110,7 +102,11 @@
         autogrow
       />
       <div v-if="form.bot_welcome_photo_url && !clearPhoto" class="q-mb-sm">
-        <img :src="form.bot_welcome_photo_url" alt="Приветствие" style="max-width: 100%; max-height: 180px" />
+        <img
+          :src="welcomePhotoSrc"
+          alt="Приветствие"
+          style="max-width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px"
+        />
         <div>
           <q-btn
             flat
@@ -154,7 +150,7 @@
             />
           </div>
           <div class="col-6">
-            <q-input v-model="p.value" type="text" inputmode="decimal" label="Значение" outlined stack-label />
+            <q-input v-model="p.value" type="text" label="Значение" outlined stack-label />
           </div>
         </div>
         <q-toggle v-model="p.is_active" label="Активна" />
@@ -184,7 +180,7 @@
             />
           </div>
           <div class="col-6">
-            <q-input v-model="newPromo.value" type="text" inputmode="decimal" label="Значение" outlined stack-label />
+            <q-input v-model="newPromo.value" type="text" label="Значение" outlined stack-label />
           </div>
         </div>
         <q-btn color="primary" text-color="dark" label="Добавить акцию" @click="addPromo" />
@@ -200,16 +196,12 @@
     <q-card flat bordered class="q-mb-md bg-grey-1">
       <q-card-section class="q-gutter-sm">
         <div class="text-subtitle2">Новый администратор</div>
-        <q-input
+        <TgField
           v-model="newAdmin.telegram_id"
-          type="text"
-          inputmode="numeric"
           label="Telegram ID"
-          outlined
-          stack-label
-          hint="Числовой ID из Telegram (не @username)"
+          hint="Только цифры. Узнать ID: бот @userinfobot. Можно вставить копированием."
         />
-        <q-input v-model="newAdmin.display_name" label="Имя (необязательно)" outlined stack-label />
+        <TgField v-model="newAdmin.display_name" label="Имя (необязательно)" />
         <q-btn
           color="primary"
           text-color="dark"
@@ -275,8 +267,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { api, getToken } from "@/shared/api";
+import TgField from "@/shared/TgField.vue";
 
 type SettingsForm = {
   accrual_percent: string;
@@ -335,6 +328,12 @@ const newPromo = reactive({
   value: "10",
 });
 const newAdmin = reactive({ telegram_id: "", display_name: "" });
+const welcomePhotoSrc = computed(() => {
+  const url = form.value?.bot_welcome_photo_url || "";
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${window.location.origin}${url.startsWith("/") ? "" : "/"}${url}`;
+});
 
 async function load() {
   form.value = await api<SettingsForm>("/api/v1/settings");
@@ -498,7 +497,7 @@ async function addAdmin() {
     newAdmin.telegram_id = "";
     newAdmin.display_name = "";
     await load();
-    msg.value = "Администратор добавлен";
+    msg.value = "Администратор добавлен. Пусть откроет бота командой /start.";
   } catch (e: unknown) {
     error.value = (e as { message?: string }).message || "Ошибка";
   } finally {

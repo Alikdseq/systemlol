@@ -1,30 +1,27 @@
-/* Telegram Mini App — ввод должен работать на iOS/Android WebView */
+/* Telegram Mini App — ввод + нормальный скролл (колесо / тач) */
 
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
   overscroll-behavior: none;
-  min-height: 100%;
-  min-height: 100dvh;
-  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
   max-width: 100vw;
   background: #ffffff;
   color: #111111;
 }
 
 #app {
-  min-height: 100%;
-  min-height: 100dvh;
-  position: relative;
-  z-index: 0;
+  height: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow: hidden;
   color: #111111;
 }
 
@@ -91,7 +88,6 @@ body {
   color: #111111 !important;
 }
 
-/* Outline primary — тоже читаемо: розовая заливка + чёрный текст */
 .q-btn--outline.text-primary {
   color: #111111 !important;
   background: #f7bbdd !important;
@@ -112,7 +108,6 @@ body {
   color: #111111 !important;
 }
 
-/* Flat primary (Обновить и т.п.) — чёрный текст */
 .q-btn--flat.text-primary,
 .q-btn--flat.text-secondary {
   color: #111111 !important;
@@ -123,23 +118,7 @@ body {
   color: #111111 !important;
 }
 
-/* Метка / декоративные слои не перехватывают тапы */
-.q-field__label,
-.q-field__append,
-.q-field__prepend,
-.q-field__before,
-.q-field__after {
-  pointer-events: none !important;
-}
-
-.q-field__append .q-icon,
-.q-field__prepend .q-icon,
-.q-field__append .q-btn,
-.q-field__prepend .q-btn {
-  pointer-events: auto !important;
-}
-
-/* Нативный input всегда кликабелен и ≥16px (анти-zoom iOS) */
+/* Нативный input: ≥16px (без зума iOS) */
 input,
 textarea,
 select,
@@ -149,64 +128,14 @@ select,
   line-height: 1.35 !important;
   -webkit-user-select: text !important;
   user-select: text !important;
-  pointer-events: auto !important;
-  touch-action: manipulation;
-  opacity: 1 !important;
   color: #111111 !important;
   caret-color: #111111 !important;
-  -webkit-appearance: none;
-  appearance: none;
 }
 
-.q-field__native,
-.q-field__input {
-  min-height: 28px !important;
-  width: 100% !important;
-  max-width: 100%;
-  position: relative;
-  z-index: 2;
+.q-field__label {
+  pointer-events: none;
 }
 
-.q-field__control,
-.q-field__control-container {
-  position: relative;
-  z-index: 1;
-  cursor: text;
-  pointer-events: auto !important;
-}
-
-/* Dense в Mini App слишком мелкий — увеличиваем зону тапа */
-.q-field--dense .q-field__control,
-.q-field--dense .q-field__marginal {
-  height: 52px !important;
-  min-height: 52px !important;
-}
-
-.q-field--outlined .q-field__control {
-  padding-left: 12px;
-  padding-right: 12px;
-  min-height: 56px;
-}
-
-.q-field--outlined.q-field--dense .q-field__control {
-  padding-top: 0;
-  padding-bottom: 0;
-  min-height: 52px;
-}
-
-/* stack-label: метка сверху, поле свободно для тапа */
-.q-field--labeled.q-field--stack-label .q-field__control-container {
-  padding-top: 0 !important;
-}
-
-.q-field--stack-label .q-field__label {
-  position: relative !important;
-  transform: none !important;
-  max-width: 100% !important;
-  margin-bottom: 4px;
-}
-
-/* Чекбоксы/кнопки удобнее пальцем */
 .q-checkbox__inner,
 .q-btn {
   min-height: 44px;
@@ -216,13 +145,209 @@ select,
   align-items: flex-start;
 }
 
-/* Когда открыта клавиатура — страница может скроллиться к полю */
-.q-page {
-  padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
-  background: #ffffff;
+/* Фиксированный каркас: шапка на месте, контент скроллится колесом/тачем */
+.q-layout {
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: 100%;
+}
+
+.q-header {
+  flex-shrink: 0;
 }
 
 .q-page-container {
-  min-height: var(--tg-viewport-stable-height, 100%);
   background: #ffffff;
+  height: 100% !important;
+  max-height: 100%;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  /* иначе flex/absolute дети не дают колесу крутить */
+  min-height: 0;
+}
+
+.q-page {
+  background: #ffffff;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  overflow-anchor: none;
+  min-height: auto !important;
+}
+
+/* Поля без обёртки Quasar — стабильный ввод в Telegram WebView */
+.tg-field {
+  display: block;
+  width: 100%;
+}
+
+.tg-field__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.2;
+  color: #333333;
+  pointer-events: auto;
+}
+
+.tg-field__control {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid #c2c2c2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111111;
+  caret-color: #111111;
+  font-size: 16px;
+  line-height: 1.35;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.tg-field__control:focus {
+  outline: 2px solid #f7bbdd;
+  border-color: #d48aaa;
+}
+
+.tg-field__hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666666;
+}
+
+.register-page {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  background: #ffffff;
+  padding-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.register-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 14px 16px;
+  background: #1c1410;
+  color: #f7bbdd;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Баланс */
+.balance-totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.balance-total {
+  padding: 12px 10px;
+  border: 1px solid #e8e0d8;
+  border-radius: 10px;
+  background: #faf7f3;
+  text-align: center;
+}
+
+.balance-total--all {
+  background: #f7bbdd;
+  border-color: #f0a8cb;
+}
+
+.balance-total__label {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #666666;
+  margin-bottom: 4px;
+}
+
+.balance-total__value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #111111;
+}
+
+.balance-section {
+  margin-top: 1.25rem;
+  padding: 14px 14px 10px;
+  border: 1px solid #e8e0d8;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.balance-section__head {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0e8df;
+}
+
+.balance-section__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111111;
+  line-height: 1.25;
+}
+
+.balance-section__sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #8a7a6a;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.balance-lots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.balance-lot {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f0ea;
+}
+
+.balance-lot:last-child {
+  border-bottom: none;
+}
+
+.balance-lot__points {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111111;
+  min-width: 2.5rem;
+}
+
+.balance-lot__sep {
+  color: #c4b5a5;
+}
+
+.balance-lot__until {
+  font-size: 0.95rem;
+  color: #444444;
+}
+
+.balance-empty {
+  font-size: 0.9rem;
+  color: #888888;
+  padding: 4px 0 8px;
+}
+
+.cashier-delete-btn {
+  min-height: 36px !important;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-weight: 600;
 }

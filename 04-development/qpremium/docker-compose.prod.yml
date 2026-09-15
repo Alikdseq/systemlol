@@ -1,30 +1,45 @@
-# Production overlay. Run:
-# docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Production overlay for Q Premium
+# Usage on VPS:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d --build
 #
-# Bind only to localhost; put nginx/Caddy with TLS in front.
-# Disable Cloudflare quick-tunnel on real VPS (profile below).
+# Bind only localhost. Put Caddy/nginx with TLS in front (see deploy/Caddyfile).
+# Cloudflare quick-tunnel is disabled via profile.
 
 services:
   postgres:
     environment:
+      POSTGRES_USER: ${POSTGRES_USER:-qpremium}
+      POSTGRES_DB: ${POSTGRES_DB:-qpremium}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-    # Не публиковать БД на хост (только сеть compose)
     ports: !reset []
+    expose:
+      - "5432"
 
   redis:
     ports: !reset []
+    expose:
+      - "6379"
 
   backend:
+    env_file: !override
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-qpremium}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-qpremium}
       REDIS_URL: redis://redis:6379/0
       DEBUG: "0"
       ALLOW_DEV_AUTH: "0"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost}
+      ENABLE_DJANGO_ADMIN: ${ENABLE_DJANGO_ADMIN:-0}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?set PII_ENCRYPTION_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?set ALLOWED_HOSTS}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL}
       SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-0}
-      SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-0}
-    ports:
+      SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-31536000}
+      TZ: ${TZ:-Europe/Moscow}
+    ports: !override
       - "127.0.0.1:8000:8000"
+    volumes: !override
+      - qp_backups:/backups
+      - qp_media:/media
     command:
       [
         "gunicorn",
@@ -33,27 +48,62 @@ services:
         "0.0.0.0:8000",
         "--workers",
         "3",
+        "--threads",
+        "2",
         "--timeout",
         "60",
         "--access-logfile",
         "-",
+        "--error-logfile",
+        "-",
       ]
 
   worker:
+    env_file: !override
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-qpremium}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-qpremium}
+      REDIS_URL: redis://redis:6379/0
       DEBUG: "0"
       ALLOW_DEV_AUTH: "0"
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?set PII_ENCRYPTION_KEY}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL}
+      TZ: ${TZ:-Europe/Moscow}
+    volumes: !override
+      - qp_backups:/backups
+      - qp_media:/media
 
   beat:
+    env_file: !override
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-qpremium}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-qpremium}
+      REDIS_URL: redis://redis:6379/0
       DEBUG: "0"
       ALLOW_DEV_AUTH: "0"
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?set PII_ENCRYPTION_KEY}
+      TZ: ${TZ:-Europe/Moscow}
+    volumes: !override
+      - qp_backups:/backups
+      - qp_media:/media
 
   miniapp:
-    ports:
+    ports: !override
       - "127.0.0.1:8080:80"
+    # Image already contains nginx.conf; keep only media volume
+    volumes: !override
+      - qp_media:/var/qpremium-media:ro
+
+  bot:
+    env_file: !override
+      - .env
+    environment:
+      PUBLIC_BASE_URL: http://backend:8000
+      MINIAPP_URL: ${MINIAPP_URL:?set MINIAPP_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN}
+      TZ: ${TZ:-Europe/Moscow}
+    # No hot-reload bind mounts and no tunnel URL file in production
+    volumes: !reset []
 
   tunnel:
     profiles: ["dev-tunnel"]

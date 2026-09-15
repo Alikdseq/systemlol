@@ -510,10 +510,10 @@ def process_birthdays_for_today() -> list[dict]:
     settings = ProgramSettings.get_solo()
     if settings.birthday_gift_points <= 0:
         return []
+    # birth_date is encrypted at rest; birth_md (MMDD) is the lookup key only.
     clients = Client.objects.filter(
         status=Client.Status.ACTIVE,
-        birth_date__month=today.month,
-        birth_date__day=today.day,
+        birth_md=f"{today.month:02d}{today.day:02d}",
     )
     granted: list[dict] = []
     for client in clients:

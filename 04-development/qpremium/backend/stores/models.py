@@ -2,6 +2,8 @@ import uuid
 
 from django.db import models
 
+from clients.fields import EncryptedTextField
+
 
 class Store(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -31,7 +33,7 @@ class AdminUser(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     telegram_id = models.BigIntegerField(unique=True)
     is_active = models.BooleanField(default=True)
-    display_name = models.CharField(max_length=200, blank=True, default="")
+    display_name = EncryptedTextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

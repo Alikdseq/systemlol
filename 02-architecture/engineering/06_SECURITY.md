@@ -29,6 +29,6 @@ SSH keys, UFW 22/80/443, non-root containers.
 
 ## 5. ПДн
 
-Заказчик = оператор. Consent PROGRAM_RULES + PERSONAL_DATA обязательны.  
-ADVERTISING optional → фильтр рассылок.  
+Заказчик = оператор. Согласия v2.0: PROGRAM_RULES + PERSONAL_DATA обязательны, тексты в `backend/legal/documents/`, политика публикуется `/api/v1/legal/privacy`.  
+ADVERTISING optional (38-ФЗ) → фильтр рассылок, отзыв в профиле.  
 STORE без email/birth_date.

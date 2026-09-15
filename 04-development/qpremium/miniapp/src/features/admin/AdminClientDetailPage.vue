@@ -46,7 +46,6 @@
           <q-input
             v-model="giftPoints"
             type="text"
-            inputmode="numeric"
             outlined
             stack-label
             label="Баллы"
@@ -70,7 +69,7 @@
           />
         </div>
         <div class="col-3">
-          <q-input v-model="adjPoints" type="text" inputmode="numeric" outlined stack-label label="Баллы (+/−)" />
+          <q-input v-model="adjPoints" type="text" outlined stack-label label="Баллы (+/−)" />
         </div>
         <div class="col">
           <q-input v-model="adjComment" outlined stack-label label="Причина" />

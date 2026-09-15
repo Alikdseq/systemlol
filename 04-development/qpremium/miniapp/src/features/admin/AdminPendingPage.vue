@@ -23,7 +23,6 @@
                 outlined
                 stack-label
                 type="text"
-                inputmode="decimal"
                 label="Новая сумма → пересчёт"
               />
             </div>
@@ -45,7 +44,6 @@
                 outlined
                 stack-label
                 type="text"
-                inputmode="numeric"
                 label="Ручные баллы"
               />
             </div>

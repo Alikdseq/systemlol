@@ -190,7 +190,7 @@ def register_client(
         raise EngineError("validation_error", "Некорректная дата рождения", 400)
     if Client.objects.filter(telegram_id=telegram_id).exists():
         raise EngineError("already_registered", "Клиент уже зарегистрирован", 409)
-    if Client.objects.filter(phone=phone_n).exists():
+    if Client.objects.by_phone(phone_n).exists():
         raise EngineError("conflict", "Телефон уже зарегистрирован", 409)
 
     client = Client.objects.create(

@@ -2,7 +2,7 @@
   <q-page class="q-pa-md">
     <div class="text-h6 q-mb-md">Рассылки</div>
     <q-banner class="bg-blue-1 q-mb-md" rounded>
-      Сообщение получат только клиенты, которые согласились на рекламные сообщения.
+      Сообщение получат только клиенты с действующим согласием на рекламу (38‑ФЗ). Это реклама: начните текст с «Реклама.» Не смешивайте с сервисными уведомлениями о баллах.
     </q-banner>
     <q-input v-model="body" type="textarea" outlined autogrow label="Текст сообщения" class="q-mb-md" />
     <q-btn color="primary" :loading="busy" label="Отправить" @click="send" />

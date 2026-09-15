@@ -51,7 +51,21 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: python manage.py runserver 0.0.0.0:8000
+    command:
+      [
+        "gunicorn",
+        "config.wsgi:application",
+        "--bind",
+        "0.0.0.0:8000",
+        "--workers",
+        "2",
+        "--threads",
+        "4",
+        "--timeout",
+        "60",
+        "--access-logfile",
+        "-",
+      ]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
       interval: 10s
@@ -110,6 +124,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:80"
+    volumes:
+      - qp_media:/var/qpremium-media:ro
+      - ./miniapp/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       backend:
         condition: service_healthy
@@ -123,14 +140,12 @@ services:
     env_file:
       - .env
     environment:
-      QP_ORIGIN_URL: http://host.docker.internal:8080
+      QP_ORIGIN_URL: http://miniapp:80
       ENV_FILE: /work/.env
       URL_FILE: /shared/miniapp_url.txt
     volumes:
       - ./.env:/work/.env
       - qp_tunnel_url:/shared
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       miniapp:
         condition: service_started

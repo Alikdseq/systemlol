@@ -1,66 +1,154 @@
-# Deploy / production checklist — Q Premium
+# Deploy Q Premium → production VPS
 
 ```
-PROJECT: clothing-loyalty
-UPDATED: 2026-09-10
+PROJECT: clothing-loyalty / Q Premium
+DOMAIN: https://q-premium.ru
+MINIAPP: https://q-premium.ru/app/
+SERVER: root@83.222.17.76
+UPDATED: 2026-09-15
 ```
 
-## Персональные данные (честно)
+## Безопасность
 
-| Данные | Как хранятся сейчас | Защита |
-|--------|---------------------|--------|
-| Пароли клиентов | **Не используются** — вход через Telegram WebApp | HMAC initData + JWT |
-| Email, телефон, ФИО, ДР | В PostgreSQL **в открытом виде** (типично для CRM/лояльности) | Доступ только ADMIN/свои API; STORE без email/ДР; HTTPS; audit без ПДн |
-| JWT / bot token | Env / память | Не в audit/логах; SECRET_KEY |
+| Контроль | Как |
+|----------|-----|
+| Нет публичных 5432/6379 | `docker-compose.prod.yml` |
+| Backend/Mini App только localhost | `127.0.0.1:8000` / `127.0.0.1:8080` |
+| TLS | Caddy + Let's Encrypt на `q-premium.ru` |
+| Firewall | UFW: 22, 80, 443 |
+| fail2ban | bootstrap |
+| PII | `PII_ENCRYPTION_KEY` |
+| Нет tunnel | profile `dev-tunnel` |
 
-Field-level encryption (шифровать email в колонке) **не включено** — это отдельный этап (pgcrypto/KMS).  
-Для production v1 достаточно: **TLS + закрытая БД + роли + DEBUG=0** (шифровать поля имеет смысл при жёстком compliance / выносе бэкапов наружу без шифрования диска).
+**DNS до деплоя:** A-запись `q-premium.ru` → `83.222.17.76` (и `www` → тот же IP или CNAME на `q-premium.ru`).
 
-### Инъекции / выгрузка БД (проверка 2026-09-10)
+---
 
-- SQL: только Django ORM + `pg_dump` с argv-списком (без shell-склейки) — классический SQL injection из полей форм **не проходит**.
-- Backup/export Excel: только роль **ADMIN** (аноним → 403).
-- Unsigned auth → 401 при `DEBUG=0`.
-- Prod overlay: порты Postgres/Redis **сброшены**; Django `/admin/` выключен без `ENABLE_DJANGO_ADMIN=1`.
+## Команды деплоя (копировать по порядку)
 
-## Dev vs Prod
+### A. На ПК — секреты
 
-| | Dev (сейчас) | Prod |
-|--|--------------|------|
-| Compose | `docker compose up -d` | `docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build` |
-| DEBUG | 0 (после hardening) | 0 |
-| ALLOW_DEV_AUTH | 0 | 0 |
-| Auth | Реальный Telegram initData | То же |
-| Bot role | `/api/v1/auth/bot-resolve` + `Authorization: Bot <token>` | То же |
-| DB ports | опубликованы (удобство) | **не** публикуются |
-| Backend | runserver (dev) / gunicorn (prod overlay) | gunicorn |
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(64))"
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
 
-## Шаги на VPS
+Сохраните: `DJANGO_SECRET_KEY`, `PII_ENCRYPTION_KEY`, придумайте `POSTGRES_PASSWORD`.
 
-1. Скопировать проект, создать `.env.prod` из `.env.prod.example`.  
-2. Сгенерировать `DJANGO_SECRET_KEY` (≥50 символов) и сильный `POSTGRES_PASSWORD`.  
-3. Указать `ALLOWED_HOSTS`, `PUBLIC_BASE_URL`, `MINIAPP_URL` (HTTPS домен).  
-4. Поднять стек prod-compose.  
-5. Nginx/Caddy на хосте → `127.0.0.1:8080` + TLS.  
-6. В BotFather: Menu Button / Web App URL на prod Mini App.  
-7. Проверить: `/start`, auth, касса, backup download.  
-8. Restore drill: скачать `.dump`, `pg_restore` на тестовую БД.
+### B. На ПК — bootstrap скрипт на сервер
 
-## Controlled deployment (git)
+```powershell
+cd "C:\Users\Алихан\Desktop\ALIHAN-AI-OFFICE\projects\clothing-loyalty\04-development\qpremium"
+scp deploy\server-bootstrap.sh root@83.222.17.76:/tmp/
+ssh root@83.222.17.76 "bash /tmp/server-bootstrap.sh"
+```
 
-Production и staging поднимаются **только** с ветки `main` (или annotated tag `v*`)
-после зелёного GitHub Actions `ci`.
+### C. На ПК — доставить код
 
-Запрещено:
-- деплой с feature-ветки без merge в `main`;
-- коммит `.env` / `.env.prod` / `*.dump`;
-- `DEBUG=1` или `ALLOW_DEV_AUTH=1` на VPS.
+Git Bash / WSL:
 
-Порядок: PR → CI (backend tests + secret-scan) → merge в `main` → на VPS
-`git checkout main && docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build`.
+```bash
+cd "/c/Users/Алихан/Desktop/ALIHAN-AI-OFFICE/projects/clothing-loyalty/04-development/qpremium"
+rsync -avz --delete \
+  --exclude '.env' --exclude '.env.prod' --exclude 'node_modules' --exclude 'dist' \
+  --exclude '.git' --exclude '__pycache__' --exclude '*.dump' --exclude 'backups' \
+  ./ root@83.222.17.76:/opt/qpremium/
+```
 
-## После деплоя — обязательно
+Или PowerShell:
 
-- Сменить bot token, если он светился в DEBUG-среде.  
-- Закрыть UFW: 22/80/443 only.  
-- Не открывать 5432/6379 наружу.
+```powershell
+cd "C:\Users\Алихан\Desktop\ALIHAN-AI-OFFICE\projects\clothing-loyalty\04-development\qpremium"
+ssh root@83.222.17.76 "mkdir -p /opt/qpremium"
+scp -r docker-compose.yml docker-compose.prod.yml .env.prod.example deploy backend bot miniapp tunnel root@83.222.17.76:/opt/qpremium/
+```
+
+### D. На сервере — `.env`
+
+```bash
+ssh root@83.222.17.76
+cd /opt/qpremium
+cp .env.prod.example .env
+nano .env
+chmod 600 .env
+```
+
+В `.env` уже стоят доменные URL. Замените только:
+- `DJANGO_SECRET_KEY`
+- `TELEGRAM_BOT_TOKEN`
+- `POSTGRES_PASSWORD`
+- `PII_ENCRYPTION_KEY`
+- `ADMIN_TELEGRAM_ID`
+- OPERATOR_* (реквизиты)
+
+Не меняйте (уже верно):
+- `PUBLIC_BASE_URL=https://q-premium.ru`
+- `MINIAPP_URL=https://q-premium.ru/app/`
+- `ALLOWED_HOSTS=q-premium.ru,www.q-premium.ru,127.0.0.1,localhost,backend`
+- `DEBUG=0` / `ALLOW_DEV_AUTH=0`
+
+### E. На сервере — Caddy
+
+```bash
+cp /opt/qpremium/deploy/Caddyfile /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile
+systemctl reload caddy
+```
+
+### F. На сервере — поднять стек
+
+```bash
+cd /opt/qpremium
+chmod +x deploy/*.sh
+bash deploy/deploy.sh
+```
+
+### G. Smoke
+
+```bash
+curl -fsS http://127.0.0.1:8000/api/v1/health/
+curl -I https://q-premium.ru/app/
+curl -I https://q-premium.ru/api/v1/health/
+ufw status verbose
+ss -tlnp | grep -E ':5432|:6379' || echo "OK: DB/Redis not public"
+```
+
+### H. Telegram BotFather
+
+Menu Button / Mini App URL:
+
+```
+https://q-premium.ru/app/
+```
+
+Затем `/start` в боте.
+
+### I. Бэкап
+
+```bash
+bash /opt/qpremium/deploy/backup.sh
+crontab -e
+```
+
+Строка cron:
+
+```
+0 3 * * * cd /opt/qpremium && bash deploy/backup.sh
+```
+
+---
+
+## Обновление релиза
+
+```bash
+# с ПК — снова rsync/scp код, затем на сервере:
+ssh root@83.222.17.76
+cd /opt/qpremium
+bash deploy/deploy.sh
+```
+
+## Запрещено
+
+- `DEBUG=1` / `ALLOW_DEV_AUTH=1` на этом сервере
+- открыть 5432/6379 в UFW
+- коммитить `.env`

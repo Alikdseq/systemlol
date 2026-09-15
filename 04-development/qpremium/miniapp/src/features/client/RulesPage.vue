@@ -9,12 +9,20 @@
       <q-item><q-item-section>Срок подарочных</q-item-section><q-item-section side>{{ s?.gift_ttl_days }} дн.</q-item-section></q-item>
     </q-list>
     <div class="text-body1" style="white-space: pre-wrap">{{ s?.rules_text || "Текст правил пока не задан администратором." }}</div>
+    <div class="q-mt-lg">
+      <a href="#" class="text-primary" @click.prevent="privacyOpen = true">Политика обработки персональных данных</a>
+      <span class="q-px-sm">·</span>
+      <a href="#" class="text-primary" @click.prevent="advOpen = true">Согласие на рекламу</a>
+    </div>
+    <LegalDocDialog v-model="privacyOpen" slug="privacy" />
+    <LegalDocDialog v-model="advOpen" slug="advertising" />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { api } from "@/shared/api";
+import LegalDocDialog from "@/shared/LegalDocDialog.vue";
 
 type Settings = {
   accrual_percent: string;
@@ -26,6 +34,8 @@ type Settings = {
 };
 
 const s = ref<Settings | null>(null);
+const privacyOpen = ref(false);
+const advOpen = ref(false);
 onMounted(async () => {
   s.value = await api<Settings>("/api/v1/settings/public");
 });

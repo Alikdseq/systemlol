@@ -1,52 +1,53 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-md balance-page">
     <div class="text-h6 q-mb-md">Мой баланс</div>
     <q-banner v-if="error" class="bg-red-1 text-negative q-mb-md">{{ error }}</q-banner>
     <q-inner-loading :showing="loading" />
 
-    <div class="row q-col-gutter-md q-mb-lg">
-      <div class="col-4">
-        <div class="text-caption text-grey-7">Накопительные</div>
-        <div class="text-h5">{{ balance?.earned ?? "—" }}</div>
+    <div class="balance-totals q-mb-lg">
+      <div class="balance-total">
+        <div class="balance-total__label">Накопительные</div>
+        <div class="balance-total__value">{{ balance?.earned ?? "—" }}</div>
       </div>
-      <div class="col-4">
-        <div class="text-caption text-grey-7">Подарочные</div>
-        <div class="text-h5">{{ balance?.gift ?? "—" }}</div>
+      <div class="balance-total">
+        <div class="balance-total__label">Подарочные</div>
+        <div class="balance-total__value">{{ balance?.gift ?? "—" }}</div>
       </div>
-      <div class="col-4">
-        <div class="text-caption text-grey-7">Всего</div>
-        <div class="text-h5 text-weight-bold">{{ balance?.total ?? "—" }}</div>
+      <div class="balance-total balance-total--all">
+        <div class="balance-total__label">Всего</div>
+        <div class="balance-total__value">{{ balance?.total ?? "—" }}</div>
       </div>
     </div>
 
-    <div class="text-subtitle2 q-mb-sm">Ближайшие сгорания</div>
-    <q-list bordered separator v-if="(balance?.nearest_expirations || []).length">
-      <q-item v-for="(row, i) in balance?.nearest_expirations" :key="i">
-        <q-item-section>
-          <q-item-label>
-            {{ row.date }} · {{ row.point_type_label || pointTypeRu(row.point_type) }}
-          </q-item-label>
-          <q-item-label caption>{{ row.points }} баллов</q-item-label>
-        </q-item-section>
-      </q-item>
-    </q-list>
-    <div v-else class="text-body2 text-grey-7">Нет ближайших сгораний</div>
+    <section class="balance-section">
+      <header class="balance-section__head">
+        <div class="balance-section__title">Накопительные</div>
+        <div class="balance-section__sub">даты сгорания</div>
+      </header>
+      <div v-if="(balance?.earned_lots || []).length" class="balance-lots">
+        <div v-for="(lot, i) in balance?.earned_lots" :key="'e' + i" class="balance-lot">
+          <span class="balance-lot__points">{{ lot.points }}</span>
+          <span class="balance-lot__sep">·</span>
+          <span class="balance-lot__until">до {{ formatDate(lot.expires_at) }}</span>
+        </div>
+      </div>
+      <div v-else class="balance-empty">Пока нет накопительных баллов</div>
+    </section>
 
-    <div class="text-subtitle2 q-mt-lg q-mb-sm">Партии: накопительные</div>
-    <q-list bordered separator dense>
-      <q-item v-for="(lot, i) in balance?.earned_lots || []" :key="'e' + i">
-        <q-item-section>{{ lot.points }} · до {{ formatDt(lot.expires_at) }}</q-item-section>
-      </q-item>
-      <q-item v-if="!(balance?.earned_lots || []).length"><q-item-section class="text-grey">пусто</q-item-section></q-item>
-    </q-list>
-
-    <div class="text-subtitle2 q-mt-lg q-mb-sm">Партии: подарочные</div>
-    <q-list bordered separator dense>
-      <q-item v-for="(lot, i) in balance?.gift_lots || []" :key="'g' + i">
-        <q-item-section>{{ lot.points }} · до {{ formatDt(lot.expires_at) }}</q-item-section>
-      </q-item>
-      <q-item v-if="!(balance?.gift_lots || []).length"><q-item-section class="text-grey">пусто</q-item-section></q-item>
-    </q-list>
+    <section class="balance-section">
+      <header class="balance-section__head">
+        <div class="balance-section__title">Подарочные</div>
+        <div class="balance-section__sub">даты сгорания</div>
+      </header>
+      <div v-if="(balance?.gift_lots || []).length" class="balance-lots">
+        <div v-for="(lot, i) in balance?.gift_lots" :key="'g' + i" class="balance-lot">
+          <span class="balance-lot__points">{{ lot.points }}</span>
+          <span class="balance-lot__sep">·</span>
+          <span class="balance-lot__until">до {{ formatDate(lot.expires_at) }}</span>
+        </div>
+      </div>
+      <div v-else class="balance-empty">Пока нет подарочных баллов</div>
+    </section>
 
     <q-btn class="q-mt-lg" flat color="primary" label="Обновить" @click="load" />
   </q-page>
@@ -62,27 +63,20 @@ type Balance = {
   total: number;
   earned_lots: { expires_at: string; points: number }[];
   gift_lots: { expires_at: string; points: number }[];
-  nearest_expirations: {
-    date: string;
-    points: number;
-    point_type: string;
-    point_type_label?: string;
-  }[];
 };
 
 const balance = ref<Balance | null>(null);
 const loading = ref(false);
 const error = ref("");
 
-function pointTypeRu(t: string) {
-  if (t === "gift") return "подарочные";
-  if (t === "earned") return "накопительные";
-  return t;
-}
-
-function formatDt(iso: string) {
+function formatDate(iso: string) {
   try {
-    return new Date(iso).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
+    return new Date(iso).toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "Europe/Moscow",
+    });
   } catch {
     return iso;
   }
