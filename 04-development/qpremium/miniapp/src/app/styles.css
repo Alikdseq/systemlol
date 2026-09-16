@@ -179,6 +179,9 @@ select,
 .tg-field {
   display: block;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .tg-field__label {
@@ -194,6 +197,8 @@ select,
   display: block;
   box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 48px;
   padding: 12px;
   border: 1px solid #c2c2c2;
@@ -350,4 +355,53 @@ select,
   padding: 0 14px;
   border-radius: 8px;
   font-weight: 600;
+}
+
+.profile-page,
+.profile-form {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.profile-card {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.profile-card__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.store-sel {
+  line-height: 1.25;
+  max-width: 100%;
+  padding: 2px 0;
+}
+
+.store-toolbar .q-toolbar__title {
+  min-width: 0;
+  padding-right: 8px;
+  width: auto;
+  flex: 1 1 auto;
+}
+
+.store-toolbar__addr {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.2;
+  opacity: 0.88;
+  margin-top: 2px;
+}
+
+.q-page {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+input[type="date"].tg-field__control {
+  min-width: 0;
+  max-width: 100%;
 }

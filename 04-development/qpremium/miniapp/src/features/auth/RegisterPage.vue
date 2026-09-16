@@ -14,7 +14,12 @@
             hint="Можно 8900…, +7900…, 900… — система приведёт к единому виду"
           />
           <TgField v-model="form.email" label="Email" autocomplete="email" />
-          <TgField v-model="form.birth_date" label="Дата рождения" type="date" />
+          <TgField
+            v-model="form.birth_date"
+            label="Дата рождения"
+            type="date"
+            :max="maxBirth"
+          />
 
           <q-checkbox v-model="form.programRules">
             <span>
@@ -52,6 +57,7 @@
 import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { api, getToken } from "@/shared/api";
+import { isFutureBirthDate, maxBirthDateIso } from "@/shared/dates";
 import { useAuthStore } from "@/features/auth/authStore";
 import LegalDocDialog from "@/shared/LegalDocDialog.vue";
 import TgField from "@/shared/TgField.vue";
@@ -62,6 +68,7 @@ const loading = ref(false);
 const error = ref("");
 const dialogOpen = ref(false);
 const dialogSlug = ref("privacy");
+const maxBirth = maxBirthDateIso();
 
 const form = reactive({
   full_name: "",
@@ -88,6 +95,10 @@ async function submit() {
   error.value = "";
   if (!form.full_name.trim() || !form.phone.trim() || !form.email.trim() || !form.birth_date) {
     error.value = "Заполните ФИО, телефон, email и дату рождения";
+    return;
+  }
+  if (isFutureBirthDate(form.birth_date)) {
+    error.value = "Дата рождения не может быть в будущем";
     return;
   }
   if (!form.programRules) {

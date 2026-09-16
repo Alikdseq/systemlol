@@ -35,7 +35,16 @@
       <q-separator class="q-my-md" />
       <div class="text-subtitle2">Изменить дату рождения (сразу)</div>
       <div class="row q-col-gutter-sm items-center q-mb-md">
-        <div class="col"><q-input v-model="birthEdit" type="date" outlined stack-label label="Дата рождения" /></div>
+        <div class="col">
+          <q-input
+            v-model="birthEdit"
+            type="date"
+            outlined
+            stack-label
+            label="Дата рождения"
+            :max="maxBirth"
+          />
+        </div>
         <div class="col-auto"><q-btn outline color="primary" label="Сохранить ДР" :loading="busyBirth" @click="saveBirth" /></div>
       </div>
 
@@ -88,9 +97,11 @@
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { api } from "@/shared/api";
+import { isFutureBirthDate, maxBirthDateIso } from "@/shared/dates";
 
 const route = useRoute();
 const id = route.params.id as string;
+const maxBirth = maxBirthDateIso();
 const c = ref<{
   full_name: string;
   phone: string;
@@ -165,6 +176,10 @@ async function saveBirth() {
   msg.value = "";
   error.value = "";
   try {
+    if (isFutureBirthDate(birthEdit.value)) {
+      error.value = "Дата рождения не может быть в будущем";
+      return;
+    }
     await api(`/api/v1/clients/${id}`, {
       method: "PATCH",
       json: { birth_date: birthEdit.value },

@@ -1,9 +1,10 @@
 <template>
   <q-layout view="hHh lpR fFf">
     <q-header elevated class="bg-primary text-dark">
-      <q-toolbar>
-        <q-toolbar-title shrink class="ellipsis">
-          Касса · {{ storeTitle }}
+      <q-toolbar class="store-toolbar">
+        <q-toolbar-title class="store-toolbar__title">
+          <div class="ellipsis">Касса · {{ storeName }}</div>
+          <div v-if="storeAddress" class="store-toolbar__addr ellipsis">{{ storeAddress }}</div>
         </q-toolbar-title>
         <q-space />
         <q-btn
@@ -37,12 +38,19 @@ import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/features/auth/authStore";
 import { selectedStoreRef } from "@/shared/storeContext";
+import { storeAddressCaption } from "@/shared/dates";
 
 const auth = useAuthStore();
 const router = useRouter();
 
-const storeTitle = computed(() => {
+const storeName = computed(() => {
   return auth.store?.name || selectedStoreRef.value?.name || "магазин";
+});
+
+const storeAddress = computed(() => {
+  const addr = auth.store?.address || selectedStoreRef.value?.address || "";
+  if (!addr && !auth.store && !selectedStoreRef.value) return "";
+  return storeAddressCaption(addr);
 });
 
 function toClient() {

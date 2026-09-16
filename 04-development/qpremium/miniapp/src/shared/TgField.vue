@@ -8,6 +8,8 @@
       :type="type"
       :autocomplete="autocomplete"
       :name="fid"
+      :max="max || undefined"
+      :min="min || undefined"
       enterkeyhint="next"
       @input="onInput"
     />
@@ -25,6 +27,8 @@ const props = withDefaults(
     hint?: string;
     type?: "text" | "date";
     autocomplete?: string;
+    max?: string;
+    min?: string;
   }>(),
   { type: "text", autocomplete: "off" },
 );

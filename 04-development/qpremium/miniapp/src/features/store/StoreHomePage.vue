@@ -13,8 +13,24 @@
         emit-value
         map-options
         label="Выберите магазин"
+        behavior="menu"
         @update:model-value="onStorePick"
-      />
+      >
+        <template #option="scope">
+          <q-item v-bind="scope.itemProps">
+            <q-item-section>
+              <q-item-label>{{ scope.opt.label }}</q-item-label>
+              <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </template>
+        <template #selected-item="scope">
+          <div class="store-sel ellipsis">
+            <div class="ellipsis">{{ scope.opt.label }}</div>
+            <div class="text-caption text-grey-7 ellipsis">{{ scope.opt.caption }}</div>
+          </div>
+        </template>
+      </q-select>
     </q-banner>
 
     <q-form class="q-gutter-md" @submit.prevent="lookup">
@@ -41,6 +57,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "@/shared/api";
+import { storeAddressCaption } from "@/shared/dates";
 import { useAuthStore } from "@/features/auth/authStore";
 import { getSelectedStore, setSelectedStore } from "@/shared/storeContext";
 import TgField from "@/shared/TgField.vue";
@@ -53,7 +70,13 @@ const router = useRouter();
 const storeId = ref(getSelectedStore()?.id || "");
 const stores = ref<{ id: string; name: string; address: string }[]>([]);
 
-const storeOpts = computed(() => stores.value.map((s) => ({ label: `${s.name}`, value: s.id })));
+const storeOpts = computed(() =>
+  stores.value.map((s) => ({
+    label: s.name,
+    value: s.id,
+    caption: storeAddressCaption(s.address),
+  })),
+);
 
 function onStorePick(id: string) {
   const s = stores.value.find((x) => x.id === id);

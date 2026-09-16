@@ -1,11 +1,16 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-md profile-page">
     <div class="text-h6 q-mb-md">Профиль</div>
-    <q-form class="q-gutter-md" @submit.prevent="save">
+    <q-form class="q-gutter-md profile-form" @submit.prevent="save">
       <TgField v-model="form.full_name" label="ФИО" autocomplete="name" />
       <TgField v-model="form.phone" label="Телефон" autocomplete="tel" />
       <TgField v-model="form.email" label="Email" autocomplete="email" />
-      <TgField v-model="form.birth_date" label="Дата рождения" type="date" />
+      <TgField
+        v-model="form.birth_date"
+        label="Дата рождения"
+        type="date"
+        :max="maxBirth"
+      />
       <q-banner v-if="pendingBirth && auth.role !== 'ADMIN'" class="bg-orange-1" rounded>
         Запрос на смену даты рождения на {{ pendingBirth }} ожидает подтверждения администратора.
       </q-banner>
@@ -13,9 +18,9 @@
         Для администратора дата рождения сохраняется сразу, без подтверждения.
       </div>
 
-      <q-card flat bordered>
-        <q-card-section class="row items-center">
-          <div class="col">
+      <q-card flat bordered class="profile-card">
+        <q-card-section class="row items-center no-wrap">
+          <div class="col profile-card__text">
             <div class="text-subtitle2">Рекламные сообщения</div>
             <div class="text-caption text-grey-7">
               {{ advertising ? "Включено: можно присылать акции и новости" : "Выключено: рассылки не приходят" }}
@@ -25,6 +30,7 @@
           <q-toggle
             v-model="advertising"
             color="primary"
+            class="q-ml-sm"
             :disable="advBusy"
             @update:model-value="toggleAdvertising"
           />
@@ -45,6 +51,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
 import { api } from "@/shared/api";
+import { isFutureBirthDate, maxBirthDateIso } from "@/shared/dates";
 import { useAuthStore } from "@/features/auth/authStore";
 import LegalDocDialog from "@/shared/LegalDocDialog.vue";
 import TgField from "@/shared/TgField.vue";
@@ -59,6 +66,7 @@ const loading = ref(false);
 const advBusy = ref(false);
 const error = ref("");
 const ok = ref("");
+const maxBirth = maxBirthDateIso();
 
 async function load() {
   const data = await api<{
@@ -103,6 +111,10 @@ async function save() {
   error.value = "";
   ok.value = "";
   try {
+    if (isFutureBirthDate(form.birth_date)) {
+      error.value = "Дата рождения не может быть в будущем";
+      return;
+    }
     const res = await api<{ note?: string; pending_birth_date?: string | null }>(
       "/api/v1/clients/me",
       { method: "PATCH", json: { ...form } },

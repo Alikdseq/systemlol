@@ -15,10 +15,10 @@ from clients.services import (
     consent_proof_summary,
     consents_for_display,
     normalize_phone,
+    parse_and_validate_birth_date,
     register_client,
     set_advertising_consent,
 )
-from datetime import date as date_cls
 from django.conf import settings
 from django.utils import timezone
 from loyalty.authentication import (
@@ -226,11 +226,7 @@ class ClientMeView(APIView):
             client.email = str(request.data["email"]).strip().lower()
 
         if "birth_date" in request.data:
-            raw = request.data.get("birth_date")
-            try:
-                new_bd = date_cls.fromisoformat(str(raw))
-            except (TypeError, ValueError) as exc:
-                raise EngineError("validation_error", "Некорректная дата рождения", 400) from exc
+            new_bd = parse_and_validate_birth_date(request.data.get("birth_date"))
             if new_bd != client.birth_date:
                 # ADMIN меняет свою ДР сразу; клиент/кассир — только через подтверждение
                 if request.actor.role == "ADMIN":
@@ -582,10 +578,7 @@ class AdminClientDetailView(APIView):
         if "email" in request.data:
             client.email = str(request.data["email"]).strip().lower()
         if "birth_date" in request.data:
-            try:
-                client.birth_date = date_cls.fromisoformat(str(request.data["birth_date"]))
-            except (TypeError, ValueError) as exc:
-                raise EngineError("validation_error", "Некорректная дата рождения", 400) from exc
+            client.birth_date = parse_and_validate_birth_date(request.data["birth_date"])
             ProfileChangeRequest.objects.filter(
                 client=client,
                 field="birth_date",

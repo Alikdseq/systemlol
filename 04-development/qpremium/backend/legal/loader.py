@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 DOCS_DIR = Path(__file__).resolve().parent / "documents"
-CONSENT_VERSION = "v2.0"
+CONSENT_VERSION = "v2.1"
 
 _KEYS = (
     "OPERATOR_LEGAL_NAME",

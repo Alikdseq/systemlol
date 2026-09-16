@@ -25,7 +25,14 @@ class LegalDocumentsTests(SimpleTestCase):
 
     def test_advertising_covers_38(self):
         text = public_catalog()["advertising"]["text"]
-        for needle in ("38-ФЗ", "Telegram", "не является условием", "отзыв", "реклам"):
+        for needle in (
+            "38-ФЗ",
+            "ООО «ШИК»",
+            "ooo_shik@internet.ru",
+            "СМС",
+            "отказ",
+            "реклам",
+        ):
             self.assertIn(needle.lower(), text.lower(), needle)
 
     def test_pd_consent_excludes_advertising(self):

@@ -44,8 +44,12 @@
       <q-item v-for="a in accesses" :key="a.id">
         <q-item-section>
           <q-item-label>
-            {{ a.full_name || "Кассир" }} · {{ a.phone || "телефон не найден" }} → {{ a.store_name }}
+            {{ a.full_name || "Кассир" }} · {{ a.phone || "телефон не найден" }}
           </q-item-label>
+          <q-item-label>
+            → {{ a.store_name }}
+          </q-item-label>
+          <q-item-label caption>{{ storeAddressCaption(a.store_address) }}</q-item-label>
         </q-item-section>
         <q-item-section side>
           <q-btn
@@ -66,7 +70,31 @@
 
     <div class="row q-col-gutter-sm">
       <div class="col-12 col-sm-5">
-        <q-select v-model="storeId" :options="storeOpts" dense outlined label="Магазин" emit-value map-options />
+        <q-select
+          v-model="storeId"
+          :options="storeOpts"
+          dense
+          outlined
+          label="Магазин"
+          emit-value
+          map-options
+          behavior="menu"
+        >
+          <template #option="scope">
+            <q-item v-bind="scope.itemProps">
+              <q-item-section>
+                <q-item-label>{{ scope.opt.label }}</q-item-label>
+                <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+          <template #selected-item="scope">
+            <div class="store-sel ellipsis">
+              <div class="ellipsis">{{ scope.opt.label }}</div>
+              <div class="text-caption text-grey-7 ellipsis">{{ scope.opt.caption }}</div>
+            </div>
+          </template>
+        </q-select>
       </div>
       <div class="col-12 col-sm-4">
         <q-input v-model="phone" outlined stack-label type="text" label="Телефон кассира" />
@@ -84,12 +112,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { api } from "@/shared/api";
+import { storeAddressCaption } from "@/shared/dates";
 
 type Store = { id: string; name: string; address: string; is_active: boolean };
 type Access = {
   id: string;
   store_id: string;
   store_name: string;
+  store_address?: string;
   phone?: string;
   full_name?: string;
   is_active: boolean;
@@ -106,7 +136,11 @@ const error = ref("");
 const busy = ref("");
 
 const storeOpts = computed(() =>
-  stores.value.map((s) => ({ label: s.name, value: s.id })),
+  stores.value.map((s) => ({
+    label: s.name,
+    value: s.id,
+    caption: storeAddressCaption(s.address),
+  })),
 );
 
 async function load() {
@@ -196,7 +230,7 @@ async function deleteAccess(a: Access) {
   const who = a.full_name || a.phone || "кассира";
   if (
     !confirm(
-      `Удалить кассира «${who}» из магазина «${a.store_name}»? Доступ к кассе исчезнет, человек снова будет обычным клиентом.`,
+      `Удалить кассира «${who}» из магазина «${a.store_name}» (${storeAddressCaption(a.store_address)})? Доступ к кассе исчезнет, человек снова будет обычным клиентом.`,
     )
   ) {
     return;

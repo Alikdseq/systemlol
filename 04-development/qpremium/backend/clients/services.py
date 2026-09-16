@@ -10,6 +10,25 @@ from django.utils import timezone
 from clients.models import Client, ConsentRecord
 from loyalty.engine import EngineError, grant_gift
 from loyalty.models import Operation, ProgramSettings
+from loyalty.timeutils import moscow_today
+
+
+def parse_and_validate_birth_date(raw) -> date:
+    """Parse ISO date; reject future dates (Moscow calendar day)."""
+    if isinstance(raw, date) and not isinstance(raw, datetime):
+        birth = raw
+    else:
+        try:
+            birth = date.fromisoformat(str(raw).strip()[:10])
+        except (TypeError, ValueError) as exc:
+            raise EngineError("validation_error", "Некорректная дата рождения", 400) from exc
+    if birth > moscow_today():
+        raise EngineError(
+            "validation_error",
+            "Дата рождения не может быть в будущем",
+            400,
+        )
+    return birth
 
 
 def normalize_phone(raw: str) -> str:
@@ -184,10 +203,7 @@ def register_client(
 
     phone_n = normalize_phone(phone)
     email_n = (email or "").strip().lower()
-    if isinstance(birth_date, str):
-        birth_date = date.fromisoformat(birth_date)
-    if not isinstance(birth_date, date):
-        raise EngineError("validation_error", "Некорректная дата рождения", 400)
+    birth_date = parse_and_validate_birth_date(birth_date)
     if Client.objects.filter(telegram_id=telegram_id).exists():
         raise EngineError("already_registered", "Клиент уже зарегистрирован", 409)
     if Client.objects.by_phone(phone_n).exists():

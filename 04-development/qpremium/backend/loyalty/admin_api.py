@@ -79,6 +79,7 @@ def _access_json(a: StoreAccess) -> dict:
         "id": str(a.id),
         "store_id": str(a.store_id),
         "store_name": a.store.name,
+        "store_address": a.store.address or "",
         "telegram_id": a.telegram_id,
         "phone": client.phone if client else "",
         "full_name": client.full_name if client else "",
@@ -882,9 +883,9 @@ class ProfileChangeDecideView(APIView):
             req.comment = (request.data.get("comment") or "").strip()
             if action == "approve":
                 if req.field == "birth_date":
-                    from datetime import date as date_cls
+                    from clients.services import parse_and_validate_birth_date
 
-                    req.client.birth_date = date_cls.fromisoformat(req.new_value)
+                    req.client.birth_date = parse_and_validate_birth_date(req.new_value)
                     req.client.save(update_fields=["birth_date"])
                 req.status = ProfileChangeRequest.Status.APPROVED
             else:
