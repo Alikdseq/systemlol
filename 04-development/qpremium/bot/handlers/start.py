@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-""" /start — роль-aware приветствие + кнопка Mini App (01_/10_). """
+"""/start — приветствие по роли и кнопка Mini App."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import os
 
 import httpx
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     BufferedInputFile,
     InlineKeyboardButton,
@@ -98,10 +98,77 @@ def _fetch_welcome_settings() -> dict:
 
 def _role_suffix(role: str) -> str:
     if role == "ADMIN":
-        return "\n\nВы вошли как администратор."
+        return (
+            "\n\nВы вошли как администратор."
+            "\n\nФайлы в этот чат:"
+            "\n/clients — Excel со всеми клиентами"
+            "\n/backup — резервная копия базы"
+        )
     if role == "STORE":
         return "\n\nВы вошли как кассир."
     return ""
+
+
+def _bot_headers() -> dict:
+    token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+    return {"Authorization": f"Bot {token}"}
+
+
+def _filename_from_disposition(header: str, fallback: str) -> str:
+    quoted = header.split('filename="', 1)
+    if len(quoted) == 2:
+        name = quoted[1].split('"', 1)[0].strip()
+        if name:
+            return name
+    return fallback
+
+
+async def _send_admin_file(message: Message, path: str, filename: str, caption: str) -> None:
+    if not message.from_user:
+        return
+    role = _resolve_role(message.from_user.id)
+    if role != "ADMIN":
+        await message.answer("Эта команда только для администратора.")
+        return
+    api = _api_base()
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.get(
+                f"{api}{path}",
+                headers=_bot_headers(),
+                params={"telegram_id": message.from_user.id},
+            )
+    except Exception:  # noqa: BLE001
+        logger.exception("admin file download failed path=%s", path)
+        await message.answer("Не удалось получить файл. Попробуйте ещё раз через минуту.")
+        return
+    if resp.status_code != 200:
+        logger.warning("admin file %s status=%s body=%s", path, resp.status_code, resp.text[:300])
+        await message.answer("Файл сейчас недоступен. Проверьте, что сервер запущен.")
+        return
+    filename = _filename_from_disposition(resp.headers.get("content-disposition") or "", filename)
+    doc = BufferedInputFile(resp.content, filename=filename)
+    await message.answer_document(doc, caption=caption)
+
+
+@router.message(Command("clients"))
+async def cmd_clients_export(message: Message) -> None:
+    await _send_admin_file(
+        message,
+        "/api/v1/bot/admin/clients-export",
+        "clients_export.xlsx",
+        "Список клиентов",
+    )
+
+
+@router.message(Command("backup"))
+async def cmd_backup(message: Message) -> None:
+    await _send_admin_file(
+        message,
+        "/api/v1/bot/admin/backup",
+        "qpremium_backup.dump",
+        "Резервная копия базы",
+    )
 
 
 @router.message(CommandStart())

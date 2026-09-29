@@ -1,4 +1,4 @@
-/** Telegram WebApp helpers + browser/dev fallback (08_ boot). */
+/** Telegram WebApp helpers and browser/dev fallback. */
 
 export function getTelegramWebApp(): TelegramWebApp | null {
   return window.Telegram?.WebApp ?? null;

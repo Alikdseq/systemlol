@@ -511,47 +511,98 @@ class ClientAdjustmentView(APIView):
         return Response({"operation": _op_json(op), "balance": balance_breakdown(client.id)}, status=201)
 
 
+def build_clients_export_bytes() -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Клиенты"
+    ws.append(
+        [
+            "ФИО",
+            "Телефон",
+            "Email",
+            "Дата рождения",
+            "Статус",
+            "Дата регистрации",
+            "Накопительные баллы",
+            "Подарочные баллы",
+            "Всего баллов",
+        ]
+    )
+    for c in Client.objects.all().order_by("registered_at"):
+        bal = balance_breakdown(c.id)
+        ws.append(
+            [
+                c.full_name,
+                c.phone,
+                c.email,
+                format_moscow_date(c.birth_date),
+                "активен" if c.status == Client.Status.ACTIVE else "заблокирован",
+                format_moscow_dt(c.registered_at),
+                bal["earned"],
+                bal["gift"],
+                bal["total"],
+            ]
+        )
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def latest_backup_file() -> Path:
+    from loyalty.tasks import create_db_backup
+
+    backup_dir = Path(os.environ.get("BACKUP_DIR") or getattr(settings, "BACKUP_DIR", "/backups"))
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    dumps = sorted(backup_dir.glob("*.dump"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not dumps:
+        dumps = sorted(backup_dir.glob("*.sqlite3"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not dumps:
+        result = create_db_backup()
+        if result.get("error"):
+            raise EngineError("not_found", f"Не удалось создать резервную копию: {result['error']}", 404)
+        dumps = sorted(backup_dir.glob("*.dump"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if not dumps:
+            dumps = sorted(backup_dir.glob("*.sqlite3"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not dumps:
+        raise EngineError("not_found", "Файл резервной копии не найден", 404)
+    return dumps[0]
+
+
+def _bot_admin_actor(request):
+    """Сервисный вызов бота: только ADMIN. Возвращает (actor, error_response)."""
+    from loyalty.authentication import resolve_actor, verify_bot_internal_secret
+
+    auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+    if not verify_bot_internal_secret(auth_header):
+        return None, Response(
+            {"error": {"code": "forbidden", "message": "Неверный bot secret", "details": {}}},
+            status=403,
+        )
+    try:
+        telegram_id = int(request.query_params.get("telegram_id"))
+    except (TypeError, ValueError):
+        return None, Response(
+            {"error": {"code": "validation_error", "message": "telegram_id обязателен", "details": {}}},
+            status=400,
+        )
+    actor = resolve_actor(telegram_id)
+    if actor.role != "ADMIN":
+        return None, Response(
+            {"error": {"code": "forbidden", "message": "Только для администратора", "details": {}}},
+            status=403,
+        )
+    request.actor = actor
+    return actor, None
+
+
 class ClientExportView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Клиенты"
-        ws.append(
-            [
-                "ФИО",
-                "Телефон",
-                "Email",
-                "Дата рождения",
-                "Статус",
-                "Дата регистрации",
-                "Накопительные баллы",
-                "Подарочные баллы",
-                "Всего баллов",
-            ]
-        )
-        for c in Client.objects.all().order_by("registered_at"):
-            bal = balance_breakdown(c.id)
-            ws.append(
-                [
-                    c.full_name,
-                    c.phone,
-                    c.email,
-                    format_moscow_date(c.birth_date),
-                    "активен" if c.status == Client.Status.ACTIVE else "заблокирован",
-                    format_moscow_dt(c.registered_at),
-                    bal["earned"],
-                    bal["gift"],
-                    bal["total"],
-                ]
-            )
-        buf = io.BytesIO()
-        wb.save(buf)
-        buf.seek(0)
+        payload = build_clients_export_bytes()
         _audit(request, "CLIENT_EXPORT", "clients", "all")
         resp = HttpResponse(
-            buf.getvalue(),
+            payload,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         resp["Content-Disposition"] = 'attachment; filename="clients_export.xlsx"'
@@ -762,24 +813,39 @@ class BackupDownloadView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        from loyalty.tasks import create_db_backup
-
-        backup_dir = Path(os.environ.get("BACKUP_DIR") or getattr(settings, "BACKUP_DIR", "/backups"))
-        backup_dir.mkdir(parents=True, exist_ok=True)
-        dumps = sorted(backup_dir.glob("*.dump"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if not dumps:
-            dumps = sorted(backup_dir.glob("*.sqlite3"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if not dumps:
-            result = create_db_backup()
-            if result.get("error"):
-                raise EngineError("not_found", f"Не удалось создать резервную копию: {result['error']}", 404)
-            dumps = sorted(backup_dir.glob("*.dump"), key=lambda p: p.stat().st_mtime, reverse=True)
-            if not dumps:
-                dumps = sorted(backup_dir.glob("*.sqlite3"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if not dumps:
-            raise EngineError("not_found", "Файл резервной копии не найден", 404)
-        latest = dumps[0]
+        latest = latest_backup_file()
         _audit(request, "BACKUP_DOWNLOAD", "backup", latest.name)
+        return FileResponse(latest.open("rb"), as_attachment=True, filename=latest.name)
+
+
+class BotClientExportView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        _actor, err = _bot_admin_actor(request)
+        if err:
+            return err
+        payload = build_clients_export_bytes()
+        _audit(request, "CLIENT_EXPORT", "clients", "all", {"via": "bot"})
+        resp = HttpResponse(
+            payload,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        resp["Content-Disposition"] = 'attachment; filename="clients_export.xlsx"'
+        return resp
+
+
+class BotBackupDownloadView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        _actor, err = _bot_admin_actor(request)
+        if err:
+            return err
+        latest = latest_backup_file()
+        _audit(request, "BACKUP_DOWNLOAD", "backup", latest.name, {"via": "bot"})
         return FileResponse(latest.open("rb"), as_attachment=True, filename=latest.name)
 
 

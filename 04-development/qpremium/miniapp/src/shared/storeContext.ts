@@ -1,4 +1,4 @@
-/** ADMIN в режиме кассы обязан выбрать store_id (05_ / FR-A03b). */
+/** ADMIN в режиме кассы обязан выбрать store_id. */
 
 import { ref } from "vue";
 

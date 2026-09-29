@@ -2,10 +2,10 @@
 
 ```
 PROJECT: clothing-loyalty / Q Premium
-STATUS: READY FOR VPS DEPLOY (domain fixed)
-UPDATED: 2026-09-15
+STATUS: PUSHED TO GITHUB — server pull not done yet (bot files + privacy policy)
+UPDATED: 2026-09-29
 OWNER: AI Office Manager
-CURRENT AGENT: DevOps / CEO deploy
+CURRENT AGENT: Developer
 SERVER: root@83.222.17.76
 DOMAIN: https://q-premium.ru
 MINIAPP: https://q-premium.ru/app/
@@ -17,6 +17,7 @@ MINIAPP: https://q-premium.ru/app/
 → PII-B gate + Fernet; release-gate 2026-09-13
 → Prod pack + deploy scripts
 → Домен вшит: Caddyfile, .env.prod.example, DEPLOY.md, checklist → q-premium.ru
+→ Локально, ещё не на сервере: бот отдаёт Excel (/clients) и бэкап (/backup) только админу; политика ПДн заменена текстом ООО «ШИК»
 ```
 
 ## NEED FROM CEO

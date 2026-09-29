@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Telegram notifications — outside DB transactions (03_/10_).
+"""Telegram notifications — outside DB transactions.
 
 Outbound messages go via Celery → Bot API. No Engine math here.
 """

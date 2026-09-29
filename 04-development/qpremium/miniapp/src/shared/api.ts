@@ -1,4 +1,4 @@
-/** Shared API client — Bearer only after /auth/telegram (08_). */
+/** Shared API client — Bearer only after /auth/telegram. */
 
 export type ApiError = {
   code: string;
@@ -14,7 +14,7 @@ export function getToken(): string | null {
 }
 
 export function setToken(token: string | null): void {
-  // 06_SECURITY: sessionStorage (не localStorage)
+  // sessionStorage (не localStorage)
   localStorage.removeItem(TOKEN_KEY);
   if (!token) sessionStorage.removeItem(TOKEN_KEY);
   else sessionStorage.setItem(TOKEN_KEY, token);

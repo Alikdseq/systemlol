@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Request correlation id (13_LOGGING_AUDIT)."""
+"""Request correlation id middleware."""
 
 from __future__ import annotations
 

@@ -12,7 +12,7 @@ import jwt
 from django.conf import settings
 from django.db import close_old_connections, connection, transaction
 from django.test import Client as HttpClient
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
 from clients.models import Client
@@ -101,6 +101,25 @@ class RbacIdorStoreTests(TestCase):
         self.assertEqual(r.status_code, 403)
         r = self.hc.get("/api/v1/clients/export", **self._h(self.store_tg))
         self.assertEqual(r.status_code, 403)
+
+    @override_settings(TELEGRAM_BOT_TOKEN="bot-test-secret")
+    def test_bot_files_only_for_admin(self):
+        store = self.hc.get(
+            f"/api/v1/bot/admin/clients-export?telegram_id={self.store_tg}",
+            HTTP_AUTHORIZATION="Bot bot-test-secret",
+        )
+        self.assertEqual(store.status_code, 403)
+        wrong = self.hc.get(
+            f"/api/v1/bot/admin/clients-export?telegram_id={self.admin_tg}",
+            HTTP_AUTHORIZATION="Bot wrong",
+        )
+        self.assertEqual(wrong.status_code, 403)
+        ok = self.hc.get(
+            f"/api/v1/bot/admin/clients-export?telegram_id={self.admin_tg}",
+            HTTP_AUTHORIZATION="Bot bot-test-secret",
+        )
+        self.assertEqual(ok.status_code, 200)
+        self.assertIn("spreadsheetml", ok["Content-Type"])
 
     def test_store_cannot_read_admin_settings(self):
         r = self.hc.get("/api/v1/settings", **self._h(self.store_tg))

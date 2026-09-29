@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -158,11 +157,6 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
 }
 
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(seconds=ACCESS_TOKEN_TTL_SEC),
-    "SIGNING_KEY": SECRET_KEY,
-    "ALGORITHM": "HS256",
-}
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL

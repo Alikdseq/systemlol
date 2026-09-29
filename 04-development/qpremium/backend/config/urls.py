@@ -20,6 +20,8 @@ urlpatterns = [
     path("api/v1/clients/me/balance", views.ClientBalanceView.as_view()),
     path("api/v1/clients/lookup", views.ClientLookupView.as_view()),
     path("api/v1/clients/export", admin_api.ClientExportView.as_view()),
+    path("api/v1/bot/admin/clients-export", admin_api.BotClientExportView.as_view()),
+    path("api/v1/bot/admin/backup", admin_api.BotBackupDownloadView.as_view()),
     path("api/v1/clients", admin_api.ClientListView.as_view()),
     path("api/v1/clients/<uuid:pk>", views.AdminClientDetailView.as_view()),
     path("api/v1/clients/<uuid:pk>/operations", admin_api.ClientOperationsView.as_view()),

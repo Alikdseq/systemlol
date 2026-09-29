@@ -9,7 +9,7 @@ app = Celery("config")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
-# Europe/Moscow schedules from engineering pack
+# Schedules in Europe/Moscow
 app.conf.timezone = "Europe/Moscow"
 app.conf.enable_utc = True
 app.conf.beat_schedule = {

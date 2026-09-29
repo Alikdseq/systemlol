@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Celery tasks: expire, birthday, Telegram notify, broadcast, backup (15_/10_)."""
+"""Celery tasks: expire, birthday, Telegram notify, broadcast, backup."""
 
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ def create_db_backup() -> dict:
             path.unlink(missing_ok=True)
         return {"error": err}
 
-    # Retention 7 days (16_BACKUP_RECOVERY)
+    # Retention: 7 days
     cutoff = timezone.now().timestamp() - 7 * 24 * 3600
     for old in backup_dir.glob("qpremium_*.dump"):
         try:
@@ -121,7 +121,7 @@ def expire_lots():
 
 @shared_task(name="loyalty.tasks.grant_birthdays")
 def grant_birthdays():
-    """Grant birthday gifts then notify outside Engine TX (FR-B07 / FR-C09)."""
+    """Grant birthday gifts, then notify outside the Engine transaction."""
     from clients.models import Client
     from loyalty.engine import process_birthdays_for_today
     from loyalty.models import ProgramSettings

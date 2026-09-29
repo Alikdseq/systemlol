@@ -18,7 +18,7 @@ class LegalDocumentsTests(SimpleTestCase):
             "Telegram",
             "Роскомнадзор",
             "локализац",
-            "шифр",
+            "ООО «ШИК»",
             "отзыв",
         ):
             self.assertIn(needle.lower(), text.lower(), needle)
