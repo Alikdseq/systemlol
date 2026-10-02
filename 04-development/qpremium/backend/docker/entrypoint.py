@@ -23,15 +23,22 @@ def wait_postgres(url: str, timeout: int = 60) -> None:
     raise SystemExit(f"Postgres not ready at {host}:{port}")
 
 
+def _seed(*args: str) -> None:
+    """Сид не должен ронять backend/worker/beat. Магазины он не меняет."""
+    cmd = [sys.executable, "manage.py", "seed_qpremium", *args]
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as exc:
+        print(f"seed_qpremium failed ({exc.returncode}), continue with existing data", file=sys.stderr)
+
+
 def main() -> None:
     wait_postgres(os.environ.get("DATABASE_URL", ""))
     subprocess.check_call([sys.executable, "manage.py", "migrate", "--noinput"])
-    subprocess.check_call([sys.executable, "manage.py", "seed_qpremium"])
+    _seed()
     admin_tg = os.environ.get("ADMIN_TELEGRAM_ID", "").strip()
     if admin_tg:
-        subprocess.check_call(
-            [sys.executable, "manage.py", "seed_qpremium", f"--admin-telegram-id={admin_tg}"]
-        )
+        _seed(f"--admin-telegram-id={admin_tg}")
     os.execvp(sys.argv[1], sys.argv[1:])
 
 

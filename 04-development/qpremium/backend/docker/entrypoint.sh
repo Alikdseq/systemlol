@@ -26,10 +26,11 @@ do
 done
 
 python manage.py migrate --noinput
-python manage.py seed_qpremium
+python manage.py seed_qpremium || echo "seed_qpremium failed, continue with existing data"
 
 if [ -n "$ADMIN_TELEGRAM_ID" ]; then
-  python manage.py seed_qpremium --admin-telegram-id="$ADMIN_TELEGRAM_ID"
+  python manage.py seed_qpremium --admin-telegram-id="$ADMIN_TELEGRAM_ID" \
+    || echo "seed admin failed, continue with existing data"
 fi
 
 exec "$@"

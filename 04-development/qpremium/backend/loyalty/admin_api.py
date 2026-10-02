@@ -168,15 +168,24 @@ class StoreListCreateView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        qs = Store.objects.all().order_by("name")
-        return _page(qs, request, _store_json)
+        items = list(Store.objects.all().order_by("name", "created_at"))
+        return Response(
+            {
+                "count": len(items),
+                "page": 1,
+                "page_size": len(items) or 1,
+                "results": [_store_json(s) for s in items],
+            }
+        )
 
     def post(self, request):
         name = (request.data.get("name") or "").strip()
         address = (request.data.get("address") or "").strip()
         if not name:
             raise EngineError("validation_error", "name обязателен", 400)
-        store = Store.objects.create(name=name, address=address)
+        if Store.objects.filter(name__iexact=name).exists():
+            raise EngineError("conflict", "Магазин с таким названием уже есть", 409)
+        store = Store.objects.create(name=name, address=address, is_active=True)
         _audit(request, "STORE_CREATED", "store", store.id)
         return Response(_store_json(store), status=201)
 
@@ -186,9 +195,15 @@ class StorePatchView(APIView):
 
     def patch(self, request, pk):
         store = get_object_or_404(Store, pk=pk)
-        for field in ("name", "address"):
-            if field in request.data:
-                setattr(store, field, str(request.data[field]).strip())
+        if "name" in request.data:
+            name = str(request.data["name"]).strip()
+            if not name:
+                raise EngineError("validation_error", "name обязателен", 400)
+            if Store.objects.filter(name__iexact=name).exclude(pk=store.pk).exists():
+                raise EngineError("conflict", "Магазин с таким названием уже есть", 409)
+            store.name = name
+        if "address" in request.data:
+            store.address = str(request.data["address"]).strip()
         if "is_active" in request.data:
             store.is_active = bool(request.data["is_active"])
         store.save()
@@ -196,12 +211,14 @@ class StorePatchView(APIView):
         return Response(_store_json(store))
 
     def delete(self, request, pk):
-        """Полное удаление магазина. История операций сохраняет snapshot названия/адреса."""
+        """Строка магазина удаляется из базы. История операций хранит снимок названия."""
         store = get_object_or_404(Store, pk=pk)
         store_id = store.id
         name = store.name
-        # StoreAccess CASCADE; Operation.store → SET_NULL, snapshots остаются
-        store.delete()
+        with transaction.atomic():
+            store.delete()
+        if Store.objects.filter(pk=store_id).exists():
+            raise EngineError("internal_error", "Магазин не удалился из базы", 500)
         _audit(request, "STORE_DELETED", "store", store_id, {"name": name, "hard": True})
         return Response({"ok": True, "id": str(store_id)})
 

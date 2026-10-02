@@ -7,7 +7,7 @@
       <q-expansion-item
         v-for="s in stores"
         :key="s.id"
-        :label="s.name"
+        :label="s.is_active === false ? `${s.name} (выключен)` : s.name"
         :caption="s.address || 'Адрес не указан'"
       >
         <div class="q-pa-md q-gutter-sm">
@@ -148,7 +148,7 @@ async function load() {
     api<{ results: Store[] }>("/api/v1/stores"),
     api<{ results: Access[] }>("/api/v1/store-accesses"),
   ]);
-  stores.value = (s.results || []).filter((x) => x.is_active !== false);
+  stores.value = s.results || [];
   accesses.value = a.results || [];
   if (!storeId.value && storeOpts.value[0]) storeId.value = storeOpts.value[0].value;
 }

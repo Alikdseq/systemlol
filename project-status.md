@@ -2,7 +2,7 @@
 
 ```
 PROJECT: clothing-loyalty / Q Premium
-STATUS: PUSHED TO GITHUB — server pull not done yet (bot files + privacy policy)
+STATUS: STARTUP DOES NOT CREATE STORES — not on the server until git pull and deploy.sh
 UPDATED: 2026-09-29
 OWNER: AI Office Manager
 CURRENT AGENT: Developer
