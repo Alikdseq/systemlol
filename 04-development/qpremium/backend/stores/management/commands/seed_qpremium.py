@@ -19,7 +19,14 @@ class Command(BaseCommand):
             ("Магазин 4", "Адрес 4"),
         ]
         for name, address in defaults:
-            Store.objects.get_or_create(name=name, defaults={"address": address, "is_active": True})
+            matches = Store.objects.filter(name=name)
+            count = matches.count()
+            if count == 0:
+                Store.objects.create(name=name, address=address, is_active=True)
+            elif count > 1:
+                self.stdout.write(
+                    self.style.WARNING(f"{name}: в базе {count} записей, новую не создаю")
+                )
         admin_tg = options.get("admin_telegram_id")
         if admin_tg:
             AdminUser.objects.get_or_create(telegram_id=admin_tg, defaults={"is_active": True})
